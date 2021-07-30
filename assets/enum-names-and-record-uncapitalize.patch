@@ -1,0 +1,25 @@
+Index: compiler/cpp/src/generate/t_erl_generator.cc
+===================================================================
+--- compiler/cpp/src/generate/t_erl_generator.cc	(revision 738099)
++++ compiler/cpp/src/generate/t_erl_generator.cc	(working copy)
+@@ -152,7 +152,7 @@
+     string name = capitalize((*c_iter)->get_name());
+ 
+     f_types_hrl_file_ <<
+-      indent() << "-define(" << program_name_ << "_" << name << ", " << value << ")."<< endl;
++      indent() << "-define(" << program_name_ << "_" << tenum->get_name()  << "_" << name << ", " << value << ")."<< endl;
+   }
+ 
+   f_types_hrl_file_ << endl;
+@@ -356,8 +356,9 @@
+         out     << ", ";
+         hrl_out << ", ";
+       }
+-      out     << (*m_iter)->get_name();
+-      hrl_out << (*m_iter)->get_name();
++      std::string name = uncapitalize((*m_iter)->get_name());
++      out     << "'" << name << "'";
++      hrl_out << "'" << name << "'";
+     }
+     out     << "})." << endl;
+     hrl_out << "})." << endl;

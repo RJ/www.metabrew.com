@@ -1,0 +1,71 @@
+# Site setings
+name: 'Richard Jones'
+description: Logbook / blog / devlog
+meta_description: 'Richard Jones (RJ), aka metabrew. Blog on erlang and other subjects.'
+logo:
+# Author image is used in site sidebar and greetings in the home page hero text
+author:
+  image: 'rj-headshot.jpg'
+  greetings:
+favicon: 'assets/images/favicon.ico'
+baseurl: 
+production_url: https://www.metabrew.com/
+
+# Contact form setings
+email: rj@metabrew.com
+
+# Navigation
+navigation:
+  - text: Home
+    url: /
+  - text: About
+    url: /about
+  - text: Contact Me
+    url: /contact
+  - text: Search
+    url: /search
+
+# Required Plugins
+plugins_dir:
+  - jekyll-paginate
+  - jekyll-tagsgenerator
+  - jekyll-seo-tag
+  - jekyll-sitemap
+
+plugins:
+  - jekyll-feed
+
+# feed:
+#   # path: rss.xml
+#   tags: true
+#   tags:
+#     only:
+#       - erlang
+
+
+paginate: 20
+paginate_path: /page:num/
+
+permalink: /:title
+
+markdown: kramdown
+highlighter: rouge
+kramdown:
+  input: GFM
+  # syntax_highlighter_opts:
+  #   span:
+  #     line_numbers: false
+  #   block:
+  #     line_numbers: true 
+  #     start_line: 1
+
+# Sass
+sass:
+  sass_dir: _sass
+  style: compressed
+
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - LICENSE
+  - README.md

@@ -1,0 +1,26 @@
+diff libevent-1.4.8-stable/evhttp.h libevent-1.4.8-stable-rj-clean/evhttp.h
+269a270,273
+> /** sets the local port from which http connections are made */
+> void evhttp_connection_set_local_port(struct evhttp_connection *evcon,
+>     u_short port);
+>
+diff libevent-1.4.8-stable/http.c libevent-1.4.8-stable-rj-clean/http.c
+1040a1041,1048
+> void
+> evhttp_connection_set_local_port(struct evhttp_connection *evcon,
+>     u_short port)
+> {
+>       assert(evcon->state == EVCON_DISCONNECTED);
+>     evcon->bind_port = port;
+> }
+>
+1654a1663
+>     evcon->bind_port = 0; /* by default, use ephemeral local port */
+1734c1743
+<       evcon->fd = bind_socket(evcon->bind_address, 0 /*port*/, 0 /*reuse*/);
+---
+>       evcon->fd = bind_socket(evcon->bind_address, evcon->bind_port, 0 /*reuse*/);
+diff libevent-1.4.8-stable/http-internal.h libevent-1.4.8-stable-rj-clean/http-internal.h
+63a64
+>       u_short bind_port;      /* port to use for binding the src */
+
