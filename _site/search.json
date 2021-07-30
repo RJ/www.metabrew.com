@@ -1,0 +1,155 @@
+[
+  
+    {
+      "title"    : "10 years later&amp;hellip;",
+      "category" : "",
+      "tags"     : "life",
+      "url"      : "/article/2021-blog-update",
+      "date"     : "July 29, 2021"
+    } ,
+  
+    {
+      "title"    : "BigWig: A better Erlang webtool (spawnfest entry)",
+      "category" : "",
+      "tags"     : "programming, erlang, webtool, spawnfest, etop, appmon, sasl",
+      "url"      : "/article/bigwig-erlang-webtool-spawnfest",
+      "date"     : "July 11, 2011"
+    } ,
+  
+    {
+      "title"    : "Erlang rebar tutorial: generating releases and upgrades",
+      "category" : "",
+      "tags"     : "programming, erlang, otp, appup, rebar, releasehandler",
+      "url"      : "/article/erlang-rebar-tutorial-generating-releases-upgrades",
+      "date"     : "March 26, 2011"
+    } ,
+  
+    {
+      "title"    : "Erlang/OTP releases: rebar, release_handler, .appup, etc",
+      "category" : "",
+      "tags"     : "programming, erlang, hacks, mochiweb, irc, irccloud, otp, appup, sysops, deployment, irccloud",
+      "url"      : "/article/erlangotp-releases-rebar-release_handler-appup-etc",
+      "date"     : "September 18, 2010"
+    } ,
+  
+    {
+      "title"    : "Rewriting Playdar: C++ to Erlang, massive savings",
+      "category" : "",
+      "tags"     : "programming, erlang, c, playdar, rewrite",
+      "url"      : "/article/rewriting-playdar-c-to-erlang-massive-savings",
+      "date"     : "October 21, 2009"
+    } ,
+  
+    {
+      "title"    : "Erlang talk at London Hackspace",
+      "category" : "",
+      "tags"     : "uncategorized, erlang, playdar, london, hackspace, talk",
+      "url"      : "/article/erlang-talk-at-london-hackspace",
+      "date"     : "October 8, 2009"
+    } ,
+  
+    {
+      "title"    : "Anti-RDBMS: A list of distributed key-value stores",
+      "category" : "",
+      "tags"     : "programming, erlang, hashing, java, databases, dht, nosql",
+      "url"      : "/article/anti-rdbms-a-list-of-distributed-key-value-stores",
+      "date"     : "January 19, 2009"
+    } ,
+  
+    {
+      "title"    : "How we use IRC at Last.fm",
+      "category" : "",
+      "tags"     : "programming, lastfm, irc, java",
+      "url"      : "/article/how-we-use-irc-at-lastfm",
+      "date"     : "January 8, 2009"
+    } ,
+  
+    {
+      "title"    : "Getting to know ejabberd and writing modules",
+      "category" : "",
+      "tags"     : "programming, erlang, mnesia, ejabberd, xmpp, thrift, yaws",
+      "url"      : "/article/getting-to-know-ejabberd-and-writing-modules",
+      "date"     : "November 23, 2008"
+    } ,
+  
+    {
+      "title"    : "ssh hack: connect directly to machine via a firewall box",
+      "category" : "",
+      "tags"     : "hacks, hack, ssh",
+      "url"      : "/article/ssh-hack-connect-directly-to-machine-via-a-firewall-box",
+      "date"     : "November 17, 2008"
+    } ,
+  
+    {
+      "title"    : "A Million-user Comet Application with Mochiweb, Part 3",
+      "category" : "",
+      "tags"     : "programming, erlang, c, comet, mochiweb, libevent, cnode",
+      "url"      : "/article/a-million-user-comet-application-with-mochiweb-part-3",
+      "date"     : "November 4, 2008"
+    } ,
+  
+    {
+      "title"    : "A Million-user Comet Application with Mochiweb, Part 2",
+      "category" : "",
+      "tags"     : "programming, erlang, comet, mochiweb",
+      "url"      : "/article/a-million-user-comet-application-with-mochiweb-part-2",
+      "date"     : "October 23, 2008"
+    } ,
+  
+    {
+      "title"    : "A Million-user Comet Application with Mochiweb, Part 1",
+      "category" : "",
+      "tags"     : "programming, erlang, kernel, tcp, networking, comet, http, mochiweb",
+      "url"      : "/article/a-million-user-comet-application-with-mochiweb-part-1",
+      "date"     : "October 15, 2008"
+    } ,
+  
+    {
+      "title"    : "On bulk loading data into Mnesia",
+      "category" : "",
+      "tags"     : "programming, erlang, hacks, mnesia",
+      "url"      : "/article/on-bulk-loading-data-into-mnesia",
+      "date"     : "October 13, 2008"
+    } ,
+  
+    {
+      "title"    : "Updated bash PS1",
+      "category" : "",
+      "tags"     : "hacks, bash",
+      "url"      : "/article/updated-bash-ps1",
+      "date"     : "October 11, 2008"
+    } ,
+  
+    {
+      "title"    : "Transcoding HTTP mp3 streaming proxy in bash",
+      "category" : "",
+      "tags"     : "programming, hacks, bash, netcat, hack, streaming",
+      "url"      : "/article/transcoding-http-mp3-streaming-proxy-in-bash",
+      "date"     : "September 29, 2008"
+    } ,
+  
+    {
+      "title"    : "Erlang libketama driver - Consistent Hashing",
+      "category" : "",
+      "tags"     : "programming, erlang, c, memcached, driver, hashing, ketama",
+      "url"      : "/article/erlang-libketama-driver-consistent-hashing",
+      "date"     : "September 28, 2008"
+    } ,
+  
+    {
+      "title"    : "Reading Serialized PHP Objects from Erlang",
+      "category" : "",
+      "tags"     : "programming, erlang, php",
+      "url"      : "/article/reading-serialized-php-objects-from-erlang",
+      "date"     : "September 27, 2008"
+    } ,
+  
+    {
+      "title"    : "libketama: Consistent Hashing library for memcached clients",
+      "category" : "",
+      "tags"     : "programming, hashing, caching, c, php, memcached, scalability, lastfm",
+      "url"      : "/article/libketama-consistent-hashing-algo-memcached-clients",
+      "date"     : "April 10, 2007"
+    } 
+  
+]

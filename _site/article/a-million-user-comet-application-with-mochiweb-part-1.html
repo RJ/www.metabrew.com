@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    
+        <!-- Begin Jekyll SEO tag v2.7.1 -->
+<title>A Million-user Comet Application with Mochiweb, Part 1 | Richard Jones</title>
+<meta name="generator" content="Jekyll v4.2.0" />
+<meta property="og:title" content="A Million-user Comet Application with Mochiweb, Part 1" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="In this series I will detail what I found out empirically about how mochiweb performs with lots of open connections, and show how to build a comet application using mochiweb, where each mochiweb connection is registered with a router which dispatches messages to various users. We end up with a working application that can cope with a million concurrent connections, and crucially, knowing how much RAM we need to make it work." />
+<meta property="og:description" content="In this series I will detail what I found out empirically about how mochiweb performs with lots of open connections, and show how to build a comet application using mochiweb, where each mochiweb connection is registered with a router which dispatches messages to various users. We end up with a working application that can cope with a million concurrent connections, and crucially, knowing how much RAM we need to make it work." />
+<meta property="og:site_name" content="Richard Jones" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2008-10-15T00:00:00+01:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="A Million-user Comet Application with Mochiweb, Part 1" />
+<script type="application/ld+json">
+{"datePublished":"2008-10-15T00:00:00+01:00","mainEntityOfPage":{"@type":"WebPage","@id":"/article/a-million-user-comet-application-with-mochiweb-part-1"},"url":"/article/a-million-user-comet-application-with-mochiweb-part-1","description":"In this series I will detail what I found out empirically about how mochiweb performs with lots of open connections, and show how to build a comet application using mochiweb, where each mochiweb connection is registered with a router which dispatches messages to various users. We end up with a working application that can cope with a million concurrent connections, and crucially, knowing how much RAM we need to make it work.","headline":"A Million-user Comet Application with Mochiweb, Part 1","dateModified":"2008-10-15T00:00:00+01:00","@type":"BlogPosting","@context":"https://schema.org"}</script>
+<!-- End Jekyll SEO tag -->
+
+    
+
+    <link type="application/atom+xml" rel="alternate" href="/feed.xml" title="Richard Jones" />
+
+    <link rel="apple-touch-icon" sizes="180x180" href="/assets/favicon/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/assets/favicon/favicon-16x16.png">
+    <link rel="manifest" href="/assets/favicon/site.webmanifest">
+
+	<link href="https://fonts.googleapis.com/css?family=Crimson+Text:400,400i,600,600i|Karla:400,400i,700,700i" rel="stylesheet">
+
+    <link href="/assets/css/style.css" rel="stylesheet">
+</head>
+
+
+
+<body class="layout-post">
+    <div id="page" class="site">
+        <header id="masthead" class="site-header">
+    <div class="site-header-wrap">
+        <div class="site-header-inside">
+
+            <div class="site-branding">
+                
+                <p class="profile">
+                    <a href="/">
+                        <img src="/assets/images/rj-headshot.jpg" alt="'s Picture"
+                            class="avatar" />
+                    </a>
+                </p>
+                <div class="site-identity">
+                    
+                    <h1 class="site-title">
+                        <a href="/">Richard Jones</a>
+                    </h1>
+                    
+
+                    <p class="site-description">Logbook / blog / devlog</p>
+
+
+                </div><!-- .site-identity -->
+                
+                <button id="menu-toggle" class="menu-toggle"><span class="screen-reader-text">Main Menu</span><span
+                        class="icon-menu" aria-hidden="true"></span></button>
+            </div><!-- .site-branding -->
+
+            <nav id="main-navigation" class="site-navigation" aria-label="Main Navigation">
+                <div class="site-nav-wrap">
+                    <div class="site-nav-inside">
+                    <ul class="menu">
+                        
+                        
+                        
+                        <li class="menu-item "><a href="/">Home</a></li>
+                        
+                        
+                        
+                        <li class="menu-item "><a href="/about">About</a></li>
+                        
+                        
+                        
+                        <li class="menu-item "><a href="/contact">Contact Me</a></li>
+                        
+                        
+                        
+                        <li class="menu-item "><a href="/search">Search</a></li>
+                        
+                    </ul>
+
+                    <p class="social-links">
+
+    <a href="https://twitter.com/metabrew" target="_blank">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path d="M459.37 151.716c.325 4.548.325 9.097.325 13.645 0 138.72-105.583 298.558-298.558 298.558-59.452 0-114.68-17.219-161.137-47.106 8.447.974 16.568 1.299 25.34 1.299 49.055 0 94.213-16.568 130.274-44.832-46.132-.975-84.792-31.188-98.112-72.772 6.498.974 12.995 1.624 19.818 1.624 9.421 0 18.843-1.3 27.614-3.573-48.081-9.747-84.143-51.98-84.143-102.985v-1.299c13.969 7.797 30.214 12.67 47.431 13.319-28.264-18.843-46.781-51.005-46.781-87.391 0-19.492 5.197-37.36 14.294-52.954 51.655 63.675 129.3 105.258 216.365 109.807-1.624-7.797-2.599-15.918-2.599-24.04 0-57.828 46.782-104.934 104.934-104.934 30.213 0 57.502 12.67 76.67 33.137 23.715-4.548 46.456-13.32 66.599-25.34-7.798 24.366-24.366 44.833-46.132 57.827 21.117-2.273 41.584-8.122 60.426-16.243-14.292 20.791-32.161 39.308-52.628 54.253z"/></svg>
+<!--
+Font Awesome Free 5.5.0 by @fontawesome - https://fontawesome.com
+License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License)
+-->
+    </a>
+
+    <a href="https://github.com/RJ" target="_blank">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg>
+<!--
+Font Awesome Free 5.5.0 by @fontawesome - https://fontawesome.com
+License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License)
+-->
+    </a>
+    
+    <a href="https://www.last.fm/user/RJ" target="_blank">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path d="M400 32H48C21.5 32 0 53.5 0 80v352c0 26.5 21.5 48 48 48h352c26.5 0 48-21.5 48-48V80c0-26.5-21.5-48-48-48zm-92.2 312.9c-63.4 0-85.4-28.6-97.1-64.1c-16.3-51-21.5-84.3-63-84.3c-22.4 0-45.1 16.1-45.1 61.2c0 35.2 18 57.2 43.3 57.2c28.6 0 47.6-21.3 47.6-21.3l11.7 31.9s-19.8 19.4-61.2 19.4c-51.3 0-79.9-30.1-79.9-85.8c0-57.9 28.6-92 82.5-92c73.5 0 80.8 41.4 100.8 101.9c8.8 26.8 24.2 46.2 61.2 46.2c24.9 0 38.1-5.5 38.1-19.1c0-19.9-21.8-22-49.9-28.6c-30.4-7.3-42.5-23.1-42.5-48c0-40 32.3-52.4 65.2-52.4c37.4 0 60.1 13.6 63 46.6l-36.7 4.4c-1.5-15.8-11-22.4-28.6-22.4c-16.1 0-26 7.3-26 19.8c0 11 4.8 17.6 20.9 21.3c32.7 7.1 71.8 12 71.8 57.5c.1 36.7-30.7 50.6-76.1 50.6z"/></svg>
+    </a>
+
+    <a href="/rss.xml" target="_blank">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><path d="M128.081 415.959c0 35.369-28.672 64.041-64.041 64.041S0 451.328 0 415.959s28.672-64.041 64.041-64.041 64.04 28.673 64.04 64.041zm175.66 47.25c-8.354-154.6-132.185-278.587-286.95-286.95C7.656 175.765 0 183.105 0 192.253v48.069c0 8.415 6.49 15.472 14.887 16.018 111.832 7.284 201.473 96.702 208.772 208.772.547 8.397 7.604 14.887 16.018 14.887h48.069c9.149.001 16.489-7.655 15.995-16.79zm144.249.288C439.596 229.677 251.465 40.445 16.503 32.01 7.473 31.686 0 38.981 0 48.016v48.068c0 8.625 6.835 15.645 15.453 15.999 191.179 7.839 344.627 161.316 352.465 352.465.353 8.618 7.373 15.453 15.999 15.453h48.068c9.034-.001 16.329-7.474 16.005-16.504z"/></svg>
+<!--
+Font Awesome Free 5.5.0 by @fontawesome - https://fontawesome.com
+License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License)
+-->
+    </a>
+    
+</p>
+
+                    </div><!-- .site-nav-inside -->
+                </div><!-- .site-nav-wrap -->
+            </nav><!-- .site-navigation -->
+
+            <!-- <div>
+                Foo bar
+
+            </div> -->
+
+        </div><!-- .site-header-inside -->
+    </div><!-- .site-header-wrap -->
+</header><!-- .site-header -->
+        <div id="content" class="site-content fadeInDown">
+            <div class="inner-wide">
+                    <main id="main" class="site-main">
+    
+        <article class="post-full inner">
+
+            <header class="post-header">
+                <div class="post-meta">
+                    Published <time class="post-date" datetime="2008-10-15">October 15,
+                        2008</time>
+                </div><!-- .post-meta -->
+                <h1 class="post-title">A Million-user Comet Application with Mochiweb, Part 1</h1>
+                
+                <div class="post-tags">
+                     
+                    <a href='/tag/programming/'>programming</a>
+                    
+                     
+                    <a href='/tag/erlang/'>erlang</a>
+                    
+                     
+                    <a href='/tag/kernel/'>kernel</a>
+                    
+                     
+                    <a href='/tag/tcp/'>tcp</a>
+                    
+                     
+                    <a href='/tag/networking/'>networking</a>
+                    
+                     
+                    <a href='/tag/comet/'>comet</a>
+                    
+                     
+                    <a href='/tag/http/'>http</a>
+                    
+                     
+                    <a href='/tag/mochiweb/'>mochiweb</a>
+                    
+                    
+                </div>
+                
+            </header><!-- .post-header -->
+
+            
+            <div class="post-content">
+                <p>In this series I will detail what I found out empirically about how mochiweb performs with lots of open connections, and show how to build a comet application using mochiweb, where each mochiweb connection is registered with a router which dispatches messages to various users. We end up with a working application that can cope with a million concurrent connections, and crucially, knowing how much RAM we need to make it work.</p>
+
+<p>In part one:</p>
+<ul>
+ <li>Build a basic comet mochiweb app that sends clients a message every 10 seconds.</li>
+ <li>Tune the Linux kernel to handle lots of TCP connections</li>
+ <li>Build a flood-testing tool to open lots of connections (ye olde C10k test)</li>
+ <li>Examine how much memory this requires per connection.</li>
+</ul>
+
+<p>Future posts in this series will cover how to build a real message routing system, additional tricks to reduce memory usage, and more testing with 100k and 1m concurrent connections.</p>
+
+<p>I assume you know your way around the Linux command line, and know a bit of Erlang.</p>
+
+<h2>Building a Mochiweb test application</h2>
+<p>In brief:</p>
+<ol>
+	<li>Install and build Mochiweb</li>
+	<li>Run: <code>/your-mochiweb-path/scripts/new_mochiweb.erl mochiconntest</code></li>
+	<li><code>cd mochiconntest</code> and edit <code>src/mochiconntest_web.erl</code></li>
+</ol>
+<p>This code (mochiconntest_web.erl) just accepts connections and uses chunked transfer to send an initial welcome message, and one message every 10 seconds to every client.</p>
+
+<div class="language-erlang highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">-</span><span class="ni">module</span><span class="p">(</span><span class="n">mochiconntest_web</span><span class="p">).</span>
+<span class="p">-</span><span class="ni">export</span><span class="p">([</span><span class="n">start</span><span class="o">/</span><span class="mi">1</span><span class="p">,</span> <span class="n">stop</span><span class="o">/</span><span class="mi">0</span><span class="p">,</span> <span class="n">loop</span><span class="o">/</span><span class="mi">2</span><span class="p">]).</span>
+<span class="c">%% External API
+</span><span class="nf">start</span><span class="p">(</span><span class="nv">Options</span><span class="p">)</span> <span class="o">-&gt;</span>
+    <span class="p">{</span><span class="nv">DocRoot</span><span class="p">,</span> <span class="nv">Options1</span><span class="p">}</span> <span class="o">=</span> <span class="nf">get_option</span><span class="p">(</span><span class="n">docroot</span><span class="p">,</span> <span class="nv">Options</span><span class="p">),</span>
+    <span class="nv">Loop</span> <span class="o">=</span> <span class="k">fun</span> <span class="p">(</span><span class="nv">Req</span><span class="p">)</span> <span class="o">-&gt;</span>
+                   <span class="o">?</span><span class="nv">MODULE</span><span class="p">:</span><span class="nf">loop</span><span class="p">(</span><span class="nv">Req</span><span class="p">,</span> <span class="nv">DocRoot</span><span class="p">)</span>
+           <span class="k">end</span><span class="p">,</span>
+    <span class="c">% we'll set our maximum to 1 million connections. (default: 2048)
+</span>    <span class="nn">mochiweb_http</span><span class="p">:</span><span class="nf">start</span><span class="p">([{</span><span class="n">max</span><span class="p">,</span> <span class="mi">1000000</span><span class="p">},</span> <span class="p">{</span><span class="n">name</span><span class="p">,</span> <span class="o">?</span><span class="nv">MODULE</span><span class="p">},</span> <span class="p">{</span><span class="n">loop</span><span class="p">,</span> <span class="nv">Loop</span><span class="p">}</span> <span class="p">|</span> <span class="nv">Options1</span><span class="p">]).</span>
+
+<span class="nf">stop</span><span class="p">()</span> <span class="o">-&gt;</span>
+    <span class="nn">mochiweb_http</span><span class="p">:</span><span class="nf">stop</span><span class="p">(</span><span class="o">?</span><span class="nv">MODULE</span><span class="p">).</span>
+
+<span class="nf">loop</span><span class="p">(</span><span class="nv">Req</span><span class="p">,</span> <span class="nv">DocRoot</span><span class="p">)</span> <span class="o">-&gt;</span>
+    <span class="s">"/"</span> <span class="o">++</span> <span class="nv">Path</span> <span class="o">=</span> <span class="nv">Req</span><span class="p">:</span><span class="nb">get</span><span class="p">(</span><span class="n">path</span><span class="p">),</span>
+    <span class="k">case</span> <span class="nv">Req</span><span class="p">:</span><span class="nb">get</span><span class="p">(</span><span class="n">method</span><span class="p">)</span> <span class="k">of</span>
+        <span class="nv">Method</span> <span class="k">when</span> <span class="nv">Method</span> <span class="o">=:=</span> <span class="n">'GET'</span><span class="p">;</span> <span class="nv">Method</span> <span class="o">=:=</span> <span class="n">'HEAD'</span> <span class="o">-&gt;</span>
+            <span class="k">case</span> <span class="nv">Path</span> <span class="k">of</span>
+                <span class="s">"test/"</span> <span class="o">++</span> <span class="nv">Id</span> <span class="o">-&gt;</span>
+                    <span class="nv">Response</span> <span class="o">=</span> <span class="nv">Req</span><span class="p">:</span><span class="nf">ok</span><span class="p">({</span><span class="s">"text/html; charset=utf-8"</span><span class="p">,</span>
+                                      <span class="p">[{</span><span class="s">"Server"</span><span class="p">,</span><span class="s">"Mochiweb-Test"</span><span class="p">}],</span>
+                                      <span class="n">chunked</span><span class="p">}),</span>
+                    <span class="nv">Response</span><span class="p">:</span><span class="nf">write_chunk</span><span class="p">(</span><span class="s">"Mochiconntest welcomes you! Your Id: "</span> <span class="o">++</span> <span class="nv">Id</span> <span class="o">++</span> <span class="s">"</span><span class="se">\n</span><span class="s">"</span><span class="p">),</span>
+                    <span class="c">%% router:login(list_to_atom(Id), self()),
+</span>                    <span class="nf">feed</span><span class="p">(</span><span class="nv">Response</span><span class="p">,</span> <span class="nv">Id</span><span class="p">,</span> <span class="mi">1</span><span class="p">);</span>
+                <span class="p">_</span> <span class="o">-&gt;</span>
+                    <span class="nv">Req</span><span class="p">:</span><span class="nf">not_found</span><span class="p">()</span>
+            <span class="k">end</span><span class="p">;</span>
+        <span class="n">'POST'</span> <span class="o">-&gt;</span>
+            <span class="k">case</span> <span class="nv">Path</span> <span class="k">of</span>
+                <span class="p">_</span> <span class="o">-&gt;</span>
+                    <span class="nv">Req</span><span class="p">:</span><span class="nf">not_found</span><span class="p">()</span>
+            <span class="k">end</span><span class="p">;</span>
+        <span class="p">_</span> <span class="o">-&gt;</span>
+            <span class="nv">Req</span><span class="p">:</span><span class="nf">respond</span><span class="p">({</span><span class="mi">501</span><span class="p">,</span> <span class="p">[],</span> <span class="p">[]})</span>
+    <span class="k">end</span><span class="p">.</span>
+
+<span class="nf">feed</span><span class="p">(</span><span class="nv">Response</span><span class="p">,</span> <span class="nv">Path</span><span class="p">,</span> <span class="nv">N</span><span class="p">)</span> <span class="o">-&gt;</span>
+    <span class="k">receive</span>
+        <span class="c">%{router_msg, Msg} -&gt;
+</span>        <span class="c">%    Html = io_lib:format("Recvd msg #~w: '~s'&lt;br/&gt;", [N, Msg]),
+</span>        <span class="c">%    Response:write_chunk(Html);
+</span>    <span class="k">after</span> <span class="mi">10000</span> <span class="o">-&gt;</span>
+        <span class="nv">Msg</span> <span class="o">=</span> <span class="nn">io_lib</span><span class="p">:</span><span class="nf">format</span><span class="p">(</span><span class="s">"Chunk </span><span class="si">~w</span><span class="s"> for id </span><span class="si">~s</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span> <span class="p">[</span><span class="nv">N</span><span class="p">,</span> <span class="nv">Path</span><span class="p">]),</span>
+        <span class="nv">Response</span><span class="p">:</span><span class="nf">write_chunk</span><span class="p">(</span><span class="nv">Msg</span><span class="p">)</span>
+    <span class="k">end</span><span class="p">,</span>
+    <span class="nf">feed</span><span class="p">(</span><span class="nv">Response</span><span class="p">,</span> <span class="nv">Path</span><span class="p">,</span> <span class="nv">N</span><span class="o">+</span><span class="mi">1</span><span class="p">).</span>
+
+<span class="c">%% Internal API
+</span><span class="nf">get_option</span><span class="p">(</span><span class="nv">Option</span><span class="p">,</span> <span class="nv">Options</span><span class="p">)</span> <span class="o">-&gt;</span>
+    <span class="p">{</span><span class="nn">proplists</span><span class="p">:</span><span class="nf">get_value</span><span class="p">(</span><span class="nv">Option</span><span class="p">,</span> <span class="nv">Options</span><span class="p">),</span> <span class="nn">proplists</span><span class="p">:</span><span class="nf">delete</span><span class="p">(</span><span class="nv">Option</span><span class="p">,</span> <span class="nv">Options</span><span class="p">)}.</span>
+</code></pre></div></div>
+
+<h2>Start your mochiweb app</h2>
+
+<div class="language-console highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="gp">$</span><span class="w"> </span>make <span class="o">&amp;&amp;</span> ./start-dev.sh
+</code></pre></div></div>
+
+<p>By default mochiweb listens on port 8000, on all interfaces. If you are doing this on the desktop, you can test with any web browser. Just navigate to <a href="http://localhost:8000/test/foo">http://localhost:8000/test/foo</a>.<br />
+Here’s the command-line test:</p>
+<div class="language-console highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="gp">$</span><span class="w"> </span>lynx <span class="nt">--source</span> <span class="s2">"http://localhost:8000/test/foo"</span>
+<span class="gp">Mochiconntest welcomes you! Your Id: foo&lt;br/&gt;</span><span class="w">
+</span><span class="gp">Chunk 1 for id foo&lt;br/&gt;</span><span class="w">
+</span><span class="gp">Chunk 2 for id foo&lt;br/&gt;</span><span class="w">
+</span><span class="gp">Chunk 3 for id foo&lt;br/&gt;</span><span class="w">
+</span><span class="go">^C
+</span></code></pre></div></div>
+
+<p>Yep, it works. Now let’s make it suffer.</p>
+
+<h2>Tuning the Linux Kernel for many tcp connections</h2>
+
+<p>Save yourself some time and tune the kernel tcp settings before testing with lots of connections, or your test will fail and you’ll see lots of <code>Out of socket memory</code> messages (and if you are masquerading, <code>nf_conntrack: table full, dropping packet.</code>)</p>
+
+<p>Here are the sysctl settings I ended up with - YMMV, but these will probably do:</p>
+<div class="language-console highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="gp">$</span><span class="w"> </span><span class="nb">cat</span> /etc/sysctl.conf
+<span class="gp">#</span><span class="w"> </span>General gigabit tuning:
+<span class="go">net.core.rmem_max = 16777216
+net.core.wmem_max = 16777216
+net.ipv4.tcp_rmem = 4096 87380 16777216
+net.ipv4.tcp_wmem = 4096 65536 16777216
+net.ipv4.tcp_syncookies = 1
+</span><span class="gp">#</span><span class="w"> </span>this gives the kernel more memory <span class="k">for </span>tcp
+<span class="gp">#</span><span class="w"> </span>which you need with many <span class="o">(</span>100k+<span class="o">)</span> open socket connections
+<span class="go">net.ipv4.tcp_mem = 50576   64768   98152
+net.core.netdev_max_backlog = 2500
+</span><span class="gp">#</span><span class="w"> </span>I was also masquerading the port comet was on, you might not need this
+<span class="go">net.ipv4.netfilter.ip_conntrack_max = 1048576
+</span></code></pre></div></div>
+
+<p>Put these in <code>/etc/sysctl.conf</code> then run <code>sysctl -p</code> to apply them. No need to reboot, now your kernel should be able to handle a lot more open connections, yay.</p>
+
+<h2>Creating a lot of connections</h2>
+
+<p>There are many ways to do this. <a href="http://tsung.erlang-projects.org/">Tsung</a> is quite sexy, and there and plenty of other less-sexy ways to spam an httpd with lots of requests (ab, httperf, httpload etc). None of them are ideally suited for testing a comet application, and I’d been looking for an excuse to try the Erlang http client, so I wrote a basic test to make lots of connections. 
+Just because you can, doesn’t mean you should.. one process per connection would definitely be a waste here. I’m using one process to load urls from a file, and another process to establish and receive messages from all http connections (and one process as a timer to print a report every 10 seconds). All data received from the server is discarded, but it does increment a counter so we can keep track of how many HTTP chunks were delivered.
+<br /></p>
+
+<p>floodtest.erl</p>
+<div class="language-erlang highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">-</span><span class="ni">module</span><span class="p">(</span><span class="n">floodtest</span><span class="p">).</span>
+<span class="p">-</span><span class="ni">export</span><span class="p">([</span><span class="n">start</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span> <span class="n">timer</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span> <span class="n">recv</span><span class="o">/</span><span class="mi">1</span><span class="p">]).</span>
+
+<span class="nf">start</span><span class="p">(</span><span class="nv">Filename</span><span class="p">,</span> <span class="nv">Wait</span><span class="p">)</span> <span class="o">-&gt;</span>
+    <span class="nn">inets</span><span class="p">:</span><span class="nf">start</span><span class="p">(),</span>
+    <span class="nb">spawn</span><span class="p">(</span><span class="o">?</span><span class="nv">MODULE</span><span class="p">,</span> <span class="n">timer</span><span class="p">,</span> <span class="p">[</span><span class="mi">10000</span><span class="p">,</span> <span class="nf">self</span><span class="p">()]),</span>
+    <span class="nv">This</span> <span class="o">=</span> <span class="nf">self</span><span class="p">(),</span>
+    <span class="nb">spawn</span><span class="p">(</span><span class="k">fun</span><span class="p">()</span><span class="o">-&gt;</span> <span class="nf">loadurls</span><span class="p">(</span><span class="nv">Filename</span><span class="p">,</span> <span class="k">fun</span><span class="p">(</span><span class="nv">U</span><span class="p">)</span><span class="o">-&gt;</span> 
+                                        <span class="nv">This</span> <span class="o">!</span> <span class="p">{</span><span class="n">loadurl</span><span class="p">,</span> <span class="nv">U</span><span class="p">}</span> 
+                                     <span class="k">end</span><span class="p">,</span> <span class="nv">Wait</span><span class="p">)</span> <span class="k">end</span><span class="p">),</span>
+    <span class="nf">recv</span><span class="p">({</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">}).</span>
+
+<span class="nf">recv</span><span class="p">(</span><span class="nv">Stats</span><span class="p">)</span> <span class="o">-&gt;</span>
+    <span class="p">{</span><span class="nv">Active</span><span class="p">,</span> <span class="nv">Closed</span><span class="p">,</span> <span class="nv">Chunks</span><span class="p">}</span> <span class="o">=</span> <span class="nv">Stats</span><span class="p">,</span>
+    <span class="k">receive</span>
+        <span class="p">{</span><span class="n">stats</span><span class="p">}</span> <span class="o">-&gt;</span> <span class="nn">io</span><span class="p">:</span><span class="nf">format</span><span class="p">(</span><span class="s">"Stats: </span><span class="si">~w</span><span class="se">\n</span><span class="s">"</span><span class="p">,[</span><span class="nv">Stats</span><span class="p">])</span>
+        <span class="k">after</span> <span class="mi">0</span> <span class="o">-&gt;</span> <span class="n">noop</span>
+    <span class="k">end</span><span class="p">,</span>
+    <span class="k">receive</span>
+        <span class="p">{</span><span class="n">http</span><span class="p">,{_</span><span class="nv">Ref</span><span class="p">,</span><span class="n">stream_start</span><span class="p">,_</span><span class="nv">X</span><span class="p">}}</span> <span class="o">-&gt;</span> <span class="nf">recv</span><span class="p">({</span><span class="nv">Active</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span><span class="nv">Closed</span><span class="p">,</span><span class="nv">Chunks</span><span class="p">});</span>
+        <span class="p">{</span><span class="n">http</span><span class="p">,{_</span><span class="nv">Ref</span><span class="p">,</span><span class="n">stream</span><span class="p">,_</span><span class="nv">X</span><span class="p">}}</span>       <span class="o">-&gt;</span> <span class="nf">recv</span><span class="p">({</span><span class="nv">Active</span><span class="p">,</span> <span class="nv">Closed</span><span class="p">,</span> <span class="nv">Chunks</span><span class="o">+</span><span class="mi">1</span><span class="p">});</span>
+        <span class="p">{</span><span class="n">http</span><span class="p">,{_</span><span class="nv">Ref</span><span class="p">,</span><span class="n">stream_end</span><span class="p">,_</span><span class="nv">X</span><span class="p">}}</span>   <span class="o">-&gt;</span> <span class="nf">recv</span><span class="p">({</span><span class="nv">Active</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="nv">Closed</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="nv">Chunks</span><span class="p">});</span>
+        <span class="p">{</span><span class="n">http</span><span class="p">,{_</span><span class="nv">Ref</span><span class="p">,{</span><span class="n">error</span><span class="p">,</span><span class="nv">Why</span><span class="p">}}}</span>     <span class="o">-&gt;</span> <span class="nn">io</span><span class="p">:</span><span class="nf">format</span><span class="p">(</span><span class="s">"Closed: </span><span class="si">~w</span><span class="se">\n</span><span class="s">"</span><span class="p">,[</span><span class="nv">Why</span><span class="p">]),</span>
+                                         <span class="nf">recv</span><span class="p">({</span><span class="nv">Active</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="nv">Closed</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="nv">Chunks</span><span class="p">});</span>
+        <span class="p">{</span><span class="n">loadurl</span><span class="p">,</span> <span class="nv">Url</span><span class="p">}</span>                <span class="o">-&gt;</span>
+            <span class="nn">http</span><span class="p">:</span><span class="nf">request</span><span class="p">(</span><span class="nb">get</span><span class="p">,</span> <span class="p">{</span><span class="nv">Url</span><span class="p">,</span> <span class="p">[]},</span> <span class="p">[],</span> <span class="p">[{</span><span class="n">sync</span><span class="p">,</span> <span class="n">false</span><span class="p">},</span> 
+                                              <span class="p">{</span><span class="n">stream</span><span class="p">,</span> <span class="n">self</span><span class="p">},</span> 
+                                              <span class="p">{</span><span class="n">version</span><span class="p">,</span> <span class="mi">1</span><span class="p">.</span><span class="mi">1</span><span class="p">},</span> 
+                                              <span class="p">{</span><span class="n">body_format</span><span class="p">,</span> <span class="n">binary</span><span class="p">}]),</span>
+            <span class="nf">recv</span><span class="p">(</span><span class="nv">Stats</span><span class="p">)</span>
+    <span class="k">end</span><span class="p">.</span>
+
+<span class="nf">timer</span><span class="p">(</span><span class="nv">T</span><span class="p">,</span> <span class="nv">Who</span><span class="p">)</span> <span class="o">-&gt;</span>
+    <span class="k">receive</span>
+    <span class="k">after</span> <span class="nv">T</span> <span class="o">-&gt;</span>
+        <span class="nv">Who</span> <span class="o">!</span> <span class="p">{</span><span class="n">stats</span><span class="p">}</span>
+    <span class="k">end</span><span class="p">,</span>
+    <span class="nf">timer</span><span class="p">(</span><span class="nv">T</span><span class="p">,</span> <span class="nv">Who</span><span class="p">).</span>
+
+<span class="c">% Read lines from a file with a specified delay between lines:
+</span><span class="nf">for_each_line_in_file</span><span class="p">(</span><span class="nv">Name</span><span class="p">,</span> <span class="nv">Proc</span><span class="p">,</span> <span class="nv">Mode</span><span class="p">,</span> <span class="nv">Accum0</span><span class="p">)</span> <span class="o">-&gt;</span>
+    <span class="p">{</span><span class="n">ok</span><span class="p">,</span> <span class="nv">Device</span><span class="p">}</span> <span class="o">=</span> <span class="nn">file</span><span class="p">:</span><span class="nf">open</span><span class="p">(</span><span class="nv">Name</span><span class="p">,</span> <span class="nv">Mode</span><span class="p">),</span>
+    <span class="nf">for_each_line</span><span class="p">(</span><span class="nv">Device</span><span class="p">,</span> <span class="nv">Proc</span><span class="p">,</span> <span class="nv">Accum0</span><span class="p">).</span>
+
+<span class="nf">for_each_line</span><span class="p">(</span><span class="nv">Device</span><span class="p">,</span> <span class="nv">Proc</span><span class="p">,</span> <span class="nv">Accum</span><span class="p">)</span> <span class="o">-&gt;</span>
+    <span class="k">case</span> <span class="nn">io</span><span class="p">:</span><span class="nf">get_line</span><span class="p">(</span><span class="nv">Device</span><span class="p">,</span> <span class="s">""</span><span class="p">)</span> <span class="k">of</span>
+        <span class="n">eof</span>  <span class="o">-&gt;</span> <span class="nn">file</span><span class="p">:</span><span class="nf">close</span><span class="p">(</span><span class="nv">Device</span><span class="p">),</span> <span class="nv">Accum</span><span class="p">;</span>
+        <span class="nv">Line</span> <span class="o">-&gt;</span> <span class="nv">NewAccum</span> <span class="o">=</span> <span class="nv">Proc</span><span class="p">(</span><span class="nv">Line</span><span class="p">,</span> <span class="nv">Accum</span><span class="p">),</span>
+                    <span class="nf">for_each_line</span><span class="p">(</span><span class="nv">Device</span><span class="p">,</span> <span class="nv">Proc</span><span class="p">,</span> <span class="nv">NewAccum</span><span class="p">)</span>
+    <span class="k">end</span><span class="p">.</span>
+
+<span class="nf">loadurls</span><span class="p">(</span><span class="nv">Filename</span><span class="p">,</span> <span class="nv">Callback</span><span class="p">,</span> <span class="nv">Wait</span><span class="p">)</span> <span class="o">-&gt;</span>
+    <span class="nf">for_each_line_in_file</span><span class="p">(</span><span class="nv">Filename</span><span class="p">,</span>
+        <span class="k">fun</span><span class="p">(</span><span class="nv">Line</span><span class="p">,</span> <span class="nv">List</span><span class="p">)</span> <span class="o">-&gt;</span>
+            <span class="nv">Callback</span><span class="p">(</span><span class="nn">string</span><span class="p">:</span><span class="nf">strip</span><span class="p">(</span><span class="nv">Line</span><span class="p">,</span> <span class="n">right</span><span class="p">,</span> <span class="sc">$\n</span><span class="p">)),</span>
+            <span class="k">receive</span>
+            <span class="k">after</span> <span class="nv">Wait</span> <span class="o">-&gt;</span>
+                <span class="n">noop</span>
+            <span class="k">end</span><span class="p">,</span>
+            <span class="nv">List</span>
+        <span class="k">end</span><span class="p">,</span>
+        <span class="p">[</span><span class="n">read</span><span class="p">],</span> <span class="p">[]).</span>
+</code></pre></div></div>
+
+<p><br />
+Each connection we make requires an ephemeral port, and thus a file descriptor, and by default this is limited to 1024. To avoid the <code>Too many open files</code> problem you’ll need to modify the ulimit for your shell. This can be changed in <code>/etc/security/limits.conf</code>, but requires a logout/login. For now you can just sudo and modify the current shell (su back to your non-priv’ed user after calling ulimit if you don’t want to run as root):</p>
+
+<div class="language-console highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="gp">$</span><span class="w"> </span><span class="nb">sudo </span>bash
+<span class="gp">#</span><span class="w"> </span><span class="nb">ulimit</span> <span class="nt">-n</span> 999999
+<span class="gp">#</span><span class="w"> </span>erl
+</code></pre></div></div>
+
+<p>You might as well increase the ephemeral port range to the maximum too:
+<code># echo "1024    65535" &gt; /proc/sys/net/ipv4/ip_local_port_range</code></p>
+
+<p>Generate a file of URLs to feed to the floodtest program:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">(</span> <span class="k">for </span>i <span class="k">in</span> <span class="sb">`</span><span class="nb">seq </span>1 10000<span class="sb">`</span><span class="p">;</span> <span class="se">\</span>
+  <span class="k">do </span><span class="nb">echo</span> <span class="s2">"http://localhost:8000/test/</span><span class="nv">$i</span><span class="s2">"</span> <span class="p">;</span> <span class="k">done</span> <span class="o">)</span> <span class="o">&gt;</span> <span class="se">\</span>
+    /tmp/mochi-urls.txt
+</code></pre></div></div>
+
+<p>From the erlang prompt you can now compile and launch <code>floodtest.erl</code>:</p>
+<pre>erl&gt; c(floodtest).
+erl&gt; floodtest:start("/tmp/mochi-urls.txt", 100).</pre>
+
+<p>This will establish 10 new connections per second (ie, 1 connection every 100ms).</p>
+
+<p>It will output stats in the form <code>{Active, Closed, Chunks}</code> where Active is the number of connections currently established, Closed is the number that were terminated for some reason, and Chunks is the number of chunks served by chunked transfer from mochiweb. Closed should stay on 0, and Chunks should be more than Active, because each active connection will receive multiple chunks (1 every 10 seconds).</p>
+
+<p>The <em>resident size of the mochiweb beam process with 10,000 active connections was 450MB - that’s 45KB per connection</em>. CPU utilization on the machine was practically nothing, as expected.</p>
+
+<h2>Assessment so far</h2>
+
+<p>That was a reasonable first attempt. 45KB per-connection seems a bit high - I could probably cook something up in C using libevent that could do this with closer to 4.5KB per connection (just a guess, if anyone has experience please leave a comment). If you factor in the amount of code and time it took to do this in Erlang compared with C, I think the increased memory usage is more excusable.</p>
+
+<p>In future posts I’ll cover building a message router (so we can uncomment lines 25 and 41-43 in <code>mochiconntest_web.erl</code>) and talk about some ways to reduce the overall memory usage. I’ll also share the results of testing with 100k and 1M connections.</p>
+
+<h4 id="update">UPDATE</h4>
+<p>Check out <a href="http://www.metabrew.com/article/a-million-user-comet-application-with-mochiweb-part-2/">Part 2</a> and <a href="http://www.metabrew.com/article/a-million-user-comet-application-with-mochiweb-part-3/">Part 3</a> for the rest of the saga.</p>
+
+            </div>
+            <footer class="post-footer">
+               <hr>
+            </footer>
+            
+<section id="comments-area" class="comments-area">
+
+<script src="https://utteranc.es/client.js"
+    repo="RJ/www.metabrew.com"
+    issue-term="pathname"
+    label="comment"
+    theme="github-light"
+    crossorigin="anonymous"
+    async>
+</script>
+
+</section>
+
+        </article>
+        
+
+        <section class="read-next inner">
+            <h2 class="read-next-title">Read Next</h2>
+            
+            <article class="post">
+                <header class="post-header">
+                    <div class="post-meta">
+                        <time class="published" datetime="October 13, 2008">October 13, 2008</time>
+                    </div>
+                    <h3 class="post-title"><a href="/article/on-bulk-loading-data-into-mnesia">On bulk loading data into Mnesia</a></h3>
+                    <p class="post-tags">
+                        
+                        
+                        
+                        <a href='/tag/programming/'>Programming</a>
+                        
+                        
+                        
+                        <a href='/tag/erlang/'>Erlang</a>
+                        
+                        
+                        
+                        <a href='/tag/hacks/'>Hacks</a>
+                        
+                        
+                        
+                        <a href='/tag/mnesia/'>Mnesia</a>
+                        
+                        
+                        
+                    </p>
+                </header>
+            </article>
+            
+            
+            <article class="post">
+                <header class="post-header">
+                    <div class="post-meta">
+                        <time class="published" datetime="October 23, 2008">October 23, 2008</time>
+                    </div>
+                    <h3 class="post-title"><a href="/article/a-million-user-comet-application-with-mochiweb-part-2">A Million-user Comet Application with Mochiweb, Part 2</a></h3>
+                    <p class="post-tags">
+                        
+                        
+                        
+                        <a href='/tag/programming/'>Programming</a>
+                        
+                        
+                        
+                        <a href='/tag/erlang/'>Erlang</a>
+                        
+                        
+                        
+                        <a href='/tag/comet/'>Comet</a>
+                        
+                        
+                        
+                        <a href='/tag/mochiweb/'>Mochiweb</a>
+                        
+                        
+                        
+                    </p>
+                </header>
+            </article>
+            
+        </section><!-- .read-next -->
+
+        <hr>
+
+        <!-- Create a sorted array of tags -->
+         
+        <section class="tagcloud inner">
+            <h2 class="tagcloud-title">Tags</h2>
+            <div class="tag-links">
+                
+                <a href='/tag/appmon/'>appmon</a>
+                
+                <a href='/tag/appup/'>appup</a>
+                
+                <a href='/tag/bash/'>bash</a>
+                
+                <a href='/tag/c/'>c</a>
+                
+                <a href='/tag/caching/'>caching</a>
+                
+                <a href='/tag/cnode/'>cnode</a>
+                
+                <a href='/tag/comet/'>comet</a>
+                
+                <a href='/tag/databases/'>databases</a>
+                
+                <a href='/tag/deployment/'>deployment</a>
+                
+                <a href='/tag/dht/'>dht</a>
+                
+                <a href='/tag/driver/'>driver</a>
+                
+                <a href='/tag/ejabberd/'>ejabberd</a>
+                
+                <a href='/tag/erlang/'>erlang</a>
+                
+                <a href='/tag/etop/'>etop</a>
+                
+                <a href='/tag/hack/'>hack</a>
+                
+                <a href='/tag/hacks/'>hacks</a>
+                
+                <a href='/tag/hackspace/'>hackspace</a>
+                
+                <a href='/tag/hashing/'>hashing</a>
+                
+                <a href='/tag/http/'>http</a>
+                
+                <a href='/tag/irc/'>irc</a>
+                
+                <a href='/tag/irccloud/'>irccloud</a>
+                
+                <a href='/tag/java/'>java</a>
+                
+                <a href='/tag/kernel/'>kernel</a>
+                
+                <a href='/tag/ketama/'>ketama</a>
+                
+                <a href='/tag/lastfm/'>lastfm</a>
+                
+                <a href='/tag/libevent/'>libevent</a>
+                
+                <a href='/tag/life/'>life</a>
+                
+                <a href='/tag/london/'>london</a>
+                
+                <a href='/tag/memcached/'>memcached</a>
+                
+                <a href='/tag/mnesia/'>mnesia</a>
+                
+                <a href='/tag/mochiweb/'>mochiweb</a>
+                
+                <a href='/tag/netcat/'>netcat</a>
+                
+                <a href='/tag/networking/'>networking</a>
+                
+                <a href='/tag/nosql/'>nosql</a>
+                
+                <a href='/tag/otp/'>otp</a>
+                
+                <a href='/tag/php/'>php</a>
+                
+                <a href='/tag/playdar/'>playdar</a>
+                
+                <a href='/tag/programming/'>programming</a>
+                
+                <a href='/tag/rebar/'>rebar</a>
+                
+                <a href='/tag/releasehandler/'>releasehandler</a>
+                
+                <a href='/tag/rewrite/'>rewrite</a>
+                
+                <a href='/tag/sasl/'>sasl</a>
+                
+                <a href='/tag/scalability/'>scalability</a>
+                
+                <a href='/tag/spawnfest/'>spawnfest</a>
+                
+                <a href='/tag/ssh/'>ssh</a>
+                
+                <a href='/tag/streaming/'>streaming</a>
+                
+                <a href='/tag/sysops/'>sysops</a>
+                
+                <a href='/tag/talk/'>talk</a>
+                
+                <a href='/tag/tcp/'>tcp</a>
+                
+                <a href='/tag/thrift/'>thrift</a>
+                
+                <a href='/tag/uncategorized/'>uncategorized</a>
+                
+                <a href='/tag/webtool/'>webtool</a>
+                
+                <a href='/tag/xmpp/'>xmpp</a>
+                
+                <a href='/tag/yaws/'>yaws</a>
+                
+            </div><!-- .tag-links -->
+        </section><!-- .tagcloud -->
+
+    </main><!-- .site-main -->
+
+                
+
+                <footer id="colophon" class="site-footer">
+    <p class="site-info inner">
+        Copyright <a href="#">Metabrew.com - Richard Jones</a> &copy; 2021.
+        <br>        
+
+I release all embedded source code in my blog articles to the public domain, unless otherwise specified.
+
+Article text released under the <a href="http://creativecommons.org/licenses/by-nc/4.0/">Creative Commons Attribution-NonCommercial 4.0 International License</a>.
+
+You don't need to ask me if you want to post a translated version of my work on your own website, but you must link back here as per the above license. 
+
+
+    </p>
+    <a id="back-to-top" class="back-to-top" href="#page">
+        <span class="icon-arrow-up" aria-hidden="true"></span>
+        <span class="screen-reader-text">Back to top</span>
+    </a>
+</footer><!-- .site-footer -->
+            </div><!-- .inner-wide -->
+        </div><!-- .site-content -->
+    </div><!-- .site -->
+
+    
+    <!-- Javascript Assets -->
+    <script src="/assets/js/jquery-3.3.1.min.js"></script>
+    <script src="/assets/js/plugins.js"></script>
+    <script src="/assets/js/custom.js"></script>
+
+</body>
+
+</html>

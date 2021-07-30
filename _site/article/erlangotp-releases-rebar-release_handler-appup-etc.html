@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    
+        <!-- Begin Jekyll SEO tag v2.7.1 -->
+<title>Erlang/OTP releases: rebar, release_handler, .appup, etc | Richard Jones</title>
+<meta name="generator" content="Jekyll v4.2.0" />
+<meta property="og:title" content="Erlang/OTP releases: rebar, release_handler, .appup, etc" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="I’ve been building something in Erlang recently, provisionally called IRCCloud.com (mention this post if you request an invite!) - it’s an in-browser IRC client that stays connected for you all the time, so you never miss the conversation. You can reopen your browser later and still have all the backlog. IRC is damn useful, and James and I are building IRCCloud to give you the advantages of IRC bouncer-esque functionality, with the ease of just opening a webpage." />
+<meta property="og:description" content="I’ve been building something in Erlang recently, provisionally called IRCCloud.com (mention this post if you request an invite!) - it’s an in-browser IRC client that stays connected for you all the time, so you never miss the conversation. You can reopen your browser later and still have all the backlog. IRC is damn useful, and James and I are building IRCCloud to give you the advantages of IRC bouncer-esque functionality, with the ease of just opening a webpage." />
+<meta property="og:site_name" content="Richard Jones" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2010-09-18T00:00:00+01:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="Erlang/OTP releases: rebar, release_handler, .appup, etc" />
+<script type="application/ld+json">
+{"datePublished":"2010-09-18T00:00:00+01:00","mainEntityOfPage":{"@type":"WebPage","@id":"/article/erlangotp-releases-rebar-release_handler-appup-etc"},"url":"/article/erlangotp-releases-rebar-release_handler-appup-etc","description":"I’ve been building something in Erlang recently, provisionally called IRCCloud.com (mention this post if you request an invite!) - it’s an in-browser IRC client that stays connected for you all the time, so you never miss the conversation. You can reopen your browser later and still have all the backlog. IRC is damn useful, and James and I are building IRCCloud to give you the advantages of IRC bouncer-esque functionality, with the ease of just opening a webpage.","headline":"Erlang/OTP releases: rebar, release_handler, .appup, etc","dateModified":"2010-09-18T00:00:00+01:00","@type":"BlogPosting","@context":"https://schema.org"}</script>
+<!-- End Jekyll SEO tag -->
+
+    
+
+    <link type="application/atom+xml" rel="alternate" href="/feed.xml" title="Richard Jones" />
+
+    <link rel="apple-touch-icon" sizes="180x180" href="/assets/favicon/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/assets/favicon/favicon-16x16.png">
+    <link rel="manifest" href="/assets/favicon/site.webmanifest">
+
+	<link href="https://fonts.googleapis.com/css?family=Crimson+Text:400,400i,600,600i|Karla:400,400i,700,700i" rel="stylesheet">
+
+    <link href="/assets/css/style.css" rel="stylesheet">
+</head>
+
+
+
+<body class="layout-post">
+    <div id="page" class="site">
+        <header id="masthead" class="site-header">
+    <div class="site-header-wrap">
+        <div class="site-header-inside">
+
+            <div class="site-branding">
+                
+                <p class="profile">
+                    <a href="/">
+                        <img src="/assets/images/rj-headshot.jpg" alt="'s Picture"
+                            class="avatar" />
+                    </a>
+                </p>
+                <div class="site-identity">
+                    
+                    <h1 class="site-title">
+                        <a href="/">Richard Jones</a>
+                    </h1>
+                    
+
+                    <p class="site-description">Logbook / blog / devlog</p>
+
+
+                </div><!-- .site-identity -->
+                
+                <button id="menu-toggle" class="menu-toggle"><span class="screen-reader-text">Main Menu</span><span
+                        class="icon-menu" aria-hidden="true"></span></button>
+            </div><!-- .site-branding -->
+
+            <nav id="main-navigation" class="site-navigation" aria-label="Main Navigation">
+                <div class="site-nav-wrap">
+                    <div class="site-nav-inside">
+                    <ul class="menu">
+                        
+                        
+                        
+                        <li class="menu-item "><a href="/">Home</a></li>
+                        
+                        
+                        
+                        <li class="menu-item "><a href="/about">About</a></li>
+                        
+                        
+                        
+                        <li class="menu-item "><a href="/contact">Contact Me</a></li>
+                        
+                        
+                        
+                        <li class="menu-item "><a href="/search">Search</a></li>
+                        
+                    </ul>
+
+                    <p class="social-links">
+
+    <a href="https://twitter.com/metabrew" target="_blank">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path d="M459.37 151.716c.325 4.548.325 9.097.325 13.645 0 138.72-105.583 298.558-298.558 298.558-59.452 0-114.68-17.219-161.137-47.106 8.447.974 16.568 1.299 25.34 1.299 49.055 0 94.213-16.568 130.274-44.832-46.132-.975-84.792-31.188-98.112-72.772 6.498.974 12.995 1.624 19.818 1.624 9.421 0 18.843-1.3 27.614-3.573-48.081-9.747-84.143-51.98-84.143-102.985v-1.299c13.969 7.797 30.214 12.67 47.431 13.319-28.264-18.843-46.781-51.005-46.781-87.391 0-19.492 5.197-37.36 14.294-52.954 51.655 63.675 129.3 105.258 216.365 109.807-1.624-7.797-2.599-15.918-2.599-24.04 0-57.828 46.782-104.934 104.934-104.934 30.213 0 57.502 12.67 76.67 33.137 23.715-4.548 46.456-13.32 66.599-25.34-7.798 24.366-24.366 44.833-46.132 57.827 21.117-2.273 41.584-8.122 60.426-16.243-14.292 20.791-32.161 39.308-52.628 54.253z"/></svg>
+<!--
+Font Awesome Free 5.5.0 by @fontawesome - https://fontawesome.com
+License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License)
+-->
+    </a>
+
+    <a href="https://github.com/RJ" target="_blank">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg>
+<!--
+Font Awesome Free 5.5.0 by @fontawesome - https://fontawesome.com
+License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License)
+-->
+    </a>
+    
+    <a href="https://www.last.fm/user/RJ" target="_blank">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path d="M400 32H48C21.5 32 0 53.5 0 80v352c0 26.5 21.5 48 48 48h352c26.5 0 48-21.5 48-48V80c0-26.5-21.5-48-48-48zm-92.2 312.9c-63.4 0-85.4-28.6-97.1-64.1c-16.3-51-21.5-84.3-63-84.3c-22.4 0-45.1 16.1-45.1 61.2c0 35.2 18 57.2 43.3 57.2c28.6 0 47.6-21.3 47.6-21.3l11.7 31.9s-19.8 19.4-61.2 19.4c-51.3 0-79.9-30.1-79.9-85.8c0-57.9 28.6-92 82.5-92c73.5 0 80.8 41.4 100.8 101.9c8.8 26.8 24.2 46.2 61.2 46.2c24.9 0 38.1-5.5 38.1-19.1c0-19.9-21.8-22-49.9-28.6c-30.4-7.3-42.5-23.1-42.5-48c0-40 32.3-52.4 65.2-52.4c37.4 0 60.1 13.6 63 46.6l-36.7 4.4c-1.5-15.8-11-22.4-28.6-22.4c-16.1 0-26 7.3-26 19.8c0 11 4.8 17.6 20.9 21.3c32.7 7.1 71.8 12 71.8 57.5c.1 36.7-30.7 50.6-76.1 50.6z"/></svg>
+    </a>
+
+    <a href="/rss.xml" target="_blank">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><path d="M128.081 415.959c0 35.369-28.672 64.041-64.041 64.041S0 451.328 0 415.959s28.672-64.041 64.041-64.041 64.04 28.673 64.04 64.041zm175.66 47.25c-8.354-154.6-132.185-278.587-286.95-286.95C7.656 175.765 0 183.105 0 192.253v48.069c0 8.415 6.49 15.472 14.887 16.018 111.832 7.284 201.473 96.702 208.772 208.772.547 8.397 7.604 14.887 16.018 14.887h48.069c9.149.001 16.489-7.655 15.995-16.79zm144.249.288C439.596 229.677 251.465 40.445 16.503 32.01 7.473 31.686 0 38.981 0 48.016v48.068c0 8.625 6.835 15.645 15.453 15.999 191.179 7.839 344.627 161.316 352.465 352.465.353 8.618 7.373 15.453 15.999 15.453h48.068c9.034-.001 16.329-7.474 16.005-16.504z"/></svg>
+<!--
+Font Awesome Free 5.5.0 by @fontawesome - https://fontawesome.com
+License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License)
+-->
+    </a>
+    
+</p>
+
+                    </div><!-- .site-nav-inside -->
+                </div><!-- .site-nav-wrap -->
+            </nav><!-- .site-navigation -->
+
+            <!-- <div>
+                Foo bar
+
+            </div> -->
+
+        </div><!-- .site-header-inside -->
+    </div><!-- .site-header-wrap -->
+</header><!-- .site-header -->
+        <div id="content" class="site-content fadeInDown">
+            <div class="inner-wide">
+                    <main id="main" class="site-main">
+    
+        <article class="post-full inner">
+
+            <header class="post-header">
+                <div class="post-meta">
+                    Published <time class="post-date" datetime="2010-09-18">September 18,
+                        2010</time>
+                </div><!-- .post-meta -->
+                <h1 class="post-title">Erlang/OTP releases: rebar, release_handler, .appup, etc</h1>
+                
+                <div class="post-tags">
+                     
+                    <a href='/tag/programming/'>programming</a>
+                    
+                     
+                    <a href='/tag/erlang/'>erlang</a>
+                    
+                     
+                    <a href='/tag/hacks/'>hacks</a>
+                    
+                     
+                    <a href='/tag/mochiweb/'>mochiweb</a>
+                    
+                     
+                    <a href='/tag/irc/'>irc</a>
+                    
+                     
+                    <a href='/tag/irccloud/'>irccloud</a>
+                    
+                     
+                    <a href='/tag/otp/'>otp</a>
+                    
+                     
+                    <a href='/tag/appup/'>appup</a>
+                    
+                     
+                    <a href='/tag/sysops/'>sysops</a>
+                    
+                     
+                    <a href='/tag/deployment/'>deployment</a>
+                    
+                     
+                    <a href='/tag/irccloud/'>irccloud</a>
+                    
+                    
+                </div>
+                
+            </header><!-- .post-header -->
+
+            
+            <div class="post-content">
+                <p>I’ve been building something in Erlang recently, provisionally called <a title="It's the Gmail of IRC, honest!" href="https://irccloud.com/" target="_blank">IRCCloud.com</a> (mention this post if you request an invite!) - it’s an in-browser IRC client that stays connected for you all the time, so you never miss the conversation. You can reopen your browser later and still have all the backlog. <a title="IRC: still damn useful" href="http://www.metabrew.com/article/how-we-use-irc-at-lastfm" target="_blank">IRC is damn useful</a>, and <a title="James Wheare: International man of mystery" href="http://james.wheare.org/" target="_blank">James</a> and I are building IRCCloud to give you the advantages of IRC bouncer-esque functionality, with the ease of just opening a webpage.</p>
+
+<p>The Erlang backend is connected to various IRC servers on behalf of our users, so it’s critical that I can deploy new versions of the app without restarting. Erlang’s capability to do live upgrades to running applications means it’s possible to deploy new versions of the backend without disconnecting everybody. I’ve done a fair amount of Erlang before, but I’ve only recently managed to get proper live-updates to running OTP applications working.</p>
+
+<p>Previous upgrade experience ranged from just copying over a new beam and running <code>l(my_module).</code> in the shell, to manually triggering code_change like this:</p>
+
+<div class="language-erlang highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nn">sys</span><span class="p">:</span><span class="nf">suspend</span><span class="p">(</span><span class="nv">Pid</span><span class="p">),</span>
+<span class="p">{</span><span class="n">module</span><span class="p">,</span> <span class="n">my_module</span><span class="p">}</span> <span class="o">=</span> <span class="nn">code</span><span class="p">:</span><span class="nf">load_file</span><span class="p">(</span><span class="n">my_module</span><span class="p">),</span>
+<span class="nn">sys</span><span class="p">:</span><span class="nf">change_code</span><span class="p">(</span><span class="nv">Pid</span><span class="p">,</span> <span class="n">my_module</span><span class="p">,</span> <span class="n">undefined</span><span class="p">,</span> <span class="p">[],</span> <span class="mi">10000</span><span class="p">),</span>
+<span class="nn">sys</span><span class="p">:</span><span class="nf">resume</span><span class="p">(</span><span class="nv">Pid</span><span class="p">);</span>
+</code></pre></div></div>
+
+<p>If you want to start doing complex updates that change internal state, amongst other things, you really want to be doing it in the proper OTP way.</p>
+
+<p>I started with this <a title="A good read" href="http://spawnlink.com/articles/performing-real-time-upgrades-to-an-otp-system/" target="_blank">excellent series of articles about Erlybank, on spawnlink.com</a>. I definitely recommend following along the last couple in the series to get a feel for packaging up erlang releases. I’m not going to provide a step-by-step tutorial in this post, since Mitchell already did a great job in those articles.</p>
+
+<p>Unfortunately I fell at the last hurdle - I ran into the same problem as Ricardo in the comments, namely that <a href="http://spawnlink.com/articles/performing-real-time-upgrades-to-an-otp-system/#comments" target="_blank">release_hander was looking for the .appup file in the wrong place</a>. I don’t know why this happens, but it seems that because I had the erlang system itself as a “release” (R13B etc), that somehow screwed things up. I found one other <a title="Annoying." href="http://erlang.2086793.n4.nabble.com/install-release-1-always-returns-enoent-error-td2093926.html" target="_blank">post about the same problem</a>. If you know what’s going on here, please leave a comment and put me out of my misery.</p>
+
+<h2 id="upgrade-to-r14">Upgrade to R14!</h2>
+
+<p>Let me get this out the way first: <strong>upgrade your Erlang to R14 right now</strong>, since R13B has a bug that prevents release_handler from figuring out which modules need updating when you install a new release. I lost some time to that, although consequently I did end up taking a nice tour of the sasl/release_handler/systools code.&lt;/p&gt;
+Oh, and also “rebar generate” (mentioned later in this post) will fail with some distro packaged versions of R13B04, with a message like: <em>ERROR: Unable to generate spec: read file info /usr/lib/erlang/man/man5/modprobe.d.5 failed.</em></p>
+
+<h2 id="first-target-system">First Target System</h2>
+
+<p>So I decided to roll my own <a href="http://www.erlang.org/doc/system_principles/create_target.html" target="_blank">First Target System</a>. The fine manual says:</p>
+
+<blockquote>
+  <p>Often it is not desirable to use an Erlang/OTP system as is. A developer may create new Erlang/OTP compliant applications for a particular purpose, and several original Erlang/OTP applications may be irrelevant for the purpose in question. Thus, there is a need to be able to create a new system based on a given Erlang/OTP system, where dispensable applications are removed, and a set of new applications that are included in the new system. Documentation and source code is irrelevant and is therefore not included in the new system.</p>
+
+  <p>Another advantage of creating your own target system is that you get a guaranteed environment to deploy your code into - you can simply untar your system onto any machine (of the same platform/architecture) and it will run just like it ran on your test machine. Same exact version of Erlang, same exact libraries, same config.</p>
+</blockquote>
+
+<p>After following along with the manual, I had a shiny new target system - but much to my dismay I had a R13B directory under releases/, and trying to do an application upgrade resulted in the same problem as before: release_handler was still looking for an appup file under releases/R13B/ instead of releases/myapp/.</p>
+
+<p>I tried copying my .appup to R13B, and creating a valid blank appup, to no avail.  So..</p>
+
+<h2 id="rebar-to-the-rescue-sort-of">Rebar to the rescue… sort of</h2>
+
+<p><a href="http://bitbucket.org/basho/rebar/wiki/Home">Rebar</a> is an erlang build tool with a few nifty tricks (thanks <a title="Buy this man a pint." href="http://dizzyd.com/" target="_blank">Dave</a> and the gang). Documentation/examples are still a little sparse, but one thing it does have in spades is a way to build Erlang target systems in one command: <em>./rebar generate</em></p>
+
+<p>To use rebar to make a target system you’ll need a working OTP style application in the <a title="OTP Design principles: follow them!" href="http://erlang.org/doc/design_principles/applications.html#id69069" target="_blank">usual layout</a> (src,priv,ebin,include) with a valid .app file. Here are the <a href="http://bitbucket.org/basho/rebar/wiki/ReleaseHandling" target="_blank">rebar release handling docs</a>.</p>
+
+<p>Okay. So now we have a nice target system (courtesy of rebar); your rel/&lt;appname&gt; directory will look like this:</p>
+
+<div class="language-console highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="go">drwxr-xr-x  2 rj rj   21 2010-09-15 02:49 bin
+drwxr-xr-x  8 rj rj   70 2010-09-15 02:48 erts-5.8
+drwxr-xr-x  2 rj rj   37 2010-09-15 02:49 etc
+drwxr-xr-x 27 rj rj 4096 2010-09-15 02:49 lib
+drwxr-xr-x  3 rj rj   17 2010-09-15 02:49 log
+drwxr-xr-x  3 rj rj   43 2010-09-15 02:48 releases
+</span></code></pre></div></div>
+
+<p>The lib/ directory contains stdlib, sasl, kernel, your application and any other deps you specified; The releases/ directory is reassuring empty; bin/ contains a handy nodetool script to start and stop your app; sasl is configured to log to a file. Rebar just saved you a few hours of fiddling to get things up and running. But you’re not out of the woods yet..</p>
+
+<h2 id="deploying-updates-to-rebar-packaged-target-system">Deploying updates to rebar-packaged target system</h2>
+
+<p>This was the tricky non-obvious bit. Rebar was great at getting the first system with my app deployed, however it doesn’t really offer much to help you install an update to your running system.</p>
+
+<p>I wrote a script <strong>regen.sh</strong> to use instead of “rebar generate”, which post-processes the directory structure rebar generates, to make it more amenable to deploying upgrades:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">!</span>/bin/bash
+<span class="nb">echo</span> <span class="s2">"This will nuke rel/irccloud and regenerate using rebar.. [enter to continue]"</span>
+<span class="nb">read
+rm</span> <span class="nt">-rf</span> rel/irccloud
+<span class="nb">set</span> <span class="nt">-e</span>
+./rebar compile
+./rebar generate
+<span class="nb">cd </span>rel/irccloud/lib/
+<span class="nb">echo</span> <span class="nt">-n</span> <span class="s2">"Unpacking .ez files"</span>
+<span class="k">for </span>f <span class="k">in</span> <span class="k">*</span>.ez
+<span class="k">do
+</span><span class="nb">echo</span> <span class="nt">-n</span> <span class="s2">"."</span>
+unzip <span class="nv">$f</span> &amp;gt<span class="p">;</span> /dev/null
+<span class="nb">rm</span> <span class="nv">$f</span>
+<span class="k">done
+</span><span class="nb">echo
+cd</span> ../releases/
+<span class="c"># Get the version of the only release in the system, our new app:</span>
+<span class="nv">VER</span><span class="o">=</span><span class="sb">`</span>find <span class="nb">.</span> <span class="nt">-maxdepth</span> 1 <span class="nt">-type</span> d | <span class="nb">grep</span> <span class="nt">-vE</span> <span class="s1">'^\.$'</span> | <span class="nb">head</span> <span class="nt">-n1</span> | <span class="nb">sed</span> <span class="s1">'s/^\.\///g'</span><span class="sb">`</span>
+<span class="nb">echo</span> <span class="s2">"Ver: </span><span class="k">${</span><span class="nv">VER</span><span class="k">}</span><span class="s2">, renaming .rel + .boot files correctly"</span>
+<span class="nb">cd</span> <span class="s2">"</span><span class="k">${</span><span class="nv">VER</span><span class="k">}</span><span class="s2">"</span>
+<span class="nb">mv </span>irccloud.boot start.boot
+<span class="nb">mv </span>irccloud.rel <span class="s2">"irccloud-</span><span class="k">${</span><span class="nv">VER</span><span class="k">}</span><span class="s2">.rel"</span>
+<span class="nb">cd</span> ../../../
+<span class="nb">echo</span> <span class="s2">"OK"</span>
+</code></pre></div></div>
+
+<p>This does three important things:</p>
+<ol>
+  <li>Unpack the *.ez files (zip files of applications in lib/), since upgrades with release_handler didn’t work otherwise;</li>
+  <li>rename irccloud.boot to start.boot, <a title="Erldocs.com is great" href="http://erldocs.com/R14A/sasl/systools.html?i=5&amp;search=systools#make_tar/1" target="_blank">since systools has “start.boot” hardcoded</a> as the correct name of this file for packages;</li>
+  <li>rename irccloud.rel to irccloud-&lt;VERSION&gt;.rel, since this is the standard layout for future packages.</li>
+</ol>
+
+<p><em>NB: I think I also had to change the bin/irccloud script to -boot with ﻿<code>$RUNNER_BASE_DIR/releases/$APP_VSN/start</code> instead of <code>$RUNNER_BASE_DIR/releases/$APP_VSN/$SCRIPT</code></em></p>
+
+<h2 id="tooling-up-for-easier-releases">Tooling up for easier releases</h2>
+
+<p>Now in the top level directory (alongside rel,src,ebin..) I made a releases/ directory, from which I package up new versions ready for deployment.</p>
+
+<p>I’m using a bash script, and some erlang, to facilitate packaging up new releases. Note that it adds, using erl -pz, the paths to the current .app file and beams, and the previous .app file and beams.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">#!/bin/bash</span>
+<span class="nb">set</span> <span class="nt">-e</span>
+<span class="nv">ERL_ROOT</span><span class="o">=</span><span class="nv">$1</span>
+<span class="nv">OLDVER</span><span class="o">=</span><span class="nv">$2</span>
+<span class="nv">VER</span><span class="o">=</span><span class="nv">$3</span>
+<span class="nb">cd</span> ..
+./rebar compile
+<span class="nb">cd</span> -
+<span class="nv">OLDEBIN</span><span class="o">=</span><span class="s2">"</span><span class="k">${</span><span class="nv">ERL_ROOT</span><span class="k">}</span><span class="s2">/lib/irccloud-</span><span class="k">${</span><span class="nv">OLDVER</span><span class="k">}</span><span class="s2">/ebin/"</span>
+<span class="nb">echo</span> <span class="s2">"Fetching previous rel file: irccloud-</span><span class="k">${</span><span class="nv">OLDVER</span><span class="k">}</span><span class="s2">.rel from </span><span class="k">${</span><span class="nv">ERL_ROOT</span><span class="k">}</span><span class="s2">/releases/</span><span class="k">${</span><span class="nv">OLDVER</span><span class="k">}</span><span class="s2">"</span>
+<span class="nb">cp</span> <span class="s2">"</span><span class="k">${</span><span class="nv">ERL_ROOT</span><span class="k">}</span><span class="s2">/releases/</span><span class="k">${</span><span class="nv">OLDVER</span><span class="k">}</span><span class="s2">/irccloud-</span><span class="k">${</span><span class="nv">OLDVER</span><span class="k">}</span><span class="s2">.rel"</span> <span class="s2">"irccloud-</span><span class="k">${</span><span class="nv">OLDVER</span><span class="k">}</span><span class="s2">.rel"</span>
+
+erl <span class="nt">-pz</span> ../ebin/ <span class="nt">-pz</span> <span class="s2">"</span><span class="k">${</span><span class="nv">OLDEBIN</span><span class="k">}</span><span class="s2">"</span> <span class="nt">-pz</span> ../deps/<span class="k">*</span>/ebin <span class="nt">-noshell</span> <span class="se">\</span>
+<span class="nt">-run</span> release_helper go irccloud <span class="nv">$VER</span> ../ebin <span class="nv">$OLDVER</span> <span class="s2">"</span><span class="k">${</span><span class="nv">OLDEBIN</span><span class="k">}</span><span class="s2">"</span> <span class="se">\</span>
+| <span class="nb">grep</span> <span class="nt">-v</span> <span class="s1">'Source code not found'</span>
+
+<span class="nb">echo</span> <span class="s2">"Release </span><span class="k">${</span><span class="nv">VER</span><span class="k">}</span><span class="s2"> packaged"</span>
+</code></pre></div></div>
+
+<h3 id="release_helpererl">release_helper.erl</h3>
+
+<div class="language-erlang highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">% Check some stuff, write the .rel file, generate boot scripts and relup, make tar
+</span><span class="p">-</span><span class="ni">module</span><span class="p">(</span><span class="n">release_helper</span><span class="p">).</span>
+<span class="p">-</span><span class="ni">export</span><span class="p">([</span><span class="n">go</span><span class="o">/</span><span class="mi">1</span><span class="p">]).</span>
+
+<span class="p">-</span><span class="ni">define</span><span class="p">(</span><span class="no">RELAPPS</span><span class="p">,</span> <span class="p">[</span>  <span class="n">kernel</span><span class="p">,</span> 
+                    <span class="n">stdlib</span><span class="p">,</span> 
+                    <span class="n">sasl</span><span class="p">,</span> 
+                    <span class="n">crypto</span><span class="p">,</span> 
+                    <span class="n">ssl</span><span class="p">,</span> 
+                    <span class="n">inets</span><span class="p">,</span>
+                    <span class="n">public_key</span><span class="p">,</span> 
+                    <span class="n">compiler</span><span class="p">,</span>
+                    <span class="n">syntax_tools</span><span class="p">,</span>
+                    <span class="n">edoc</span><span class="p">,</span>
+                    <span class="n">eunit</span><span class="p">,</span>
+                    <span class="n">xmerl</span><span class="p">,</span>
+                    <span class="n">epgsql</span><span class="p">,</span> 
+                    <span class="n">mochiweb</span><span class="p">]).</span>
+
+<span class="nf">appver</span><span class="p">(</span><span class="nv">A</span><span class="p">)</span> <span class="k">when</span> <span class="nb">is_atom</span><span class="p">(</span><span class="nv">A</span><span class="p">)</span> <span class="o">-&gt;</span>
+  <span class="nn">application</span><span class="p">:</span><span class="nf">load</span><span class="p">(</span><span class="nv">A</span><span class="p">),</span>
+  <span class="nn">io</span><span class="p">:</span><span class="nf">format</span><span class="p">(</span><span class="s">"Version of '</span><span class="si">~p</span><span class="s">'.."</span><span class="p">,</span> <span class="p">[</span><span class="nv">A</span><span class="p">]),</span>
+  <span class="p">{</span><span class="n">value</span><span class="p">,</span> <span class="p">{</span><span class="nv">A</span><span class="p">,</span> <span class="p">_,</span> <span class="nv">Ret</span><span class="p">}}</span> <span class="o">=</span> <span class="nn">lists</span><span class="p">:</span><span class="nf">keysearch</span><span class="p">(</span><span class="nv">A</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="nn">application</span><span class="p">:</span><span class="nf">loaded_applications</span><span class="p">()),</span>
+  <span class="nn">io</span><span class="p">:</span><span class="nf">format</span><span class="p">(</span><span class="s">"</span><span class="si">~p~n</span><span class="s">"</span><span class="p">,</span> <span class="p">[</span><span class="nv">Ret</span><span class="p">]),</span>
+  <span class="nv">Ret</span><span class="p">.</span>
+
+<span class="nf">check_appfile_version</span><span class="p">(</span><span class="nv">File</span><span class="p">,</span> <span class="nv">AppName</span><span class="p">,</span> <span class="nv">ExpectedVer</span><span class="p">)</span> <span class="o">-&gt;</span>
+  <span class="nn">io</span><span class="p">:</span><span class="nf">format</span><span class="p">(</span><span class="s">"Verifying .app file contains correct version.."</span><span class="p">,[]),</span>
+  <span class="p">{</span><span class="n">ok</span><span class="p">,</span> <span class="p">[{</span><span class="n">application</span><span class="p">,</span> <span class="nv">AppName</span><span class="p">,</span> <span class="nv">Props</span><span class="p">}]}</span> <span class="o">=</span> <span class="nn">file</span><span class="p">:</span><span class="nf">consult</span><span class="p">(</span><span class="nv">File</span><span class="p">),</span>
+  <span class="k">case</span> <span class="nn">proplists</span><span class="p">:</span><span class="nf">get_value</span><span class="p">(</span><span class="n">vsn</span><span class="p">,</span> <span class="nv">Props</span><span class="p">)</span> <span class="k">of</span>
+    <span class="nv">ExpectedVer</span> <span class="o">-&gt;</span> <span class="nn">io</span><span class="p">:</span><span class="nf">format</span><span class="p">(</span><span class="s">"ok</span><span class="si">~n</span><span class="s">"</span><span class="p">,[]),</span> <span class="n">ok</span><span class="p">;</span>
+    <span class="nv">FoundVer</span>    <span class="o">-&gt;</span> <span class="nn">io</span><span class="p">:</span><span class="nf">format</span><span class="p">(</span><span class="s">"FAIL</span><span class="si">~n</span><span class="s">App file contains ver: </span><span class="si">~s</span><span class="s"> but expected: </span><span class="si">~s~n</span><span class="s">"</span><span class="p">,</span> 
+                             <span class="p">[</span><span class="nv">FoundVer</span><span class="p">,</span> <span class="nv">ExpectedVer</span><span class="p">]),</span>
+                   <span class="nf">halt</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+  <span class="k">end</span><span class="p">.</span>
+
+<span class="nf">go</span><span class="p">(</span><span class="nv">Args</span><span class="p">)</span> <span class="o">-&gt;</span> 
+  <span class="p">[</span><span class="nv">Name</span><span class="p">,</span> <span class="nv">Version</span><span class="p">,</span> <span class="nv">Ebin</span><span class="p">,</span> <span class="nv">PVersion</span><span class="p">,</span> <span class="p">_</span><span class="nv">PEbin</span><span class="p">]</span> <span class="o">=</span> <span class="nv">Args</span><span class="p">,</span>
+  <span class="nn">io</span><span class="p">:</span><span class="nf">format</span><span class="p">(</span><span class="s">"release_helper running for: </span><span class="si">~p</span><span class="s">, oldversion: </span><span class="si">~s</span><span class="s">, new version: </span><span class="si">~s~n</span><span class="s">"</span><span class="p">,</span> 
+            <span class="p">[</span><span class="nv">Name</span><span class="p">,</span> <span class="nv">PVersion</span><span class="p">,</span> <span class="nv">Version</span><span class="p">]),</span>
+  <span class="n">ok</span>        <span class="o">=</span> <span class="nf">check_appfile_version</span><span class="p">(</span><span class="nv">Ebin</span> <span class="o">++</span> <span class="s">"/"</span> <span class="o">++</span> <span class="nv">Name</span> <span class="o">++</span> <span class="s">".app"</span><span class="p">,</span> 
+                                    <span class="nb">list_to_atom</span><span class="p">(</span><span class="nv">Name</span><span class="p">),</span> <span class="nv">Version</span><span class="p">),</span>
+  <span class="nv">Erts</span>      <span class="o">=</span> <span class="nn">erlang</span><span class="p">:</span><span class="nb">system_info</span><span class="p">(</span><span class="n">version</span><span class="p">),</span>
+  <span class="nv">Vsn</span>       <span class="o">=</span> <span class="nn">io_lib</span><span class="p">:</span><span class="nf">format</span><span class="p">(</span><span class="s">"</span><span class="si">~s</span><span class="s">-</span><span class="si">~s</span><span class="s">"</span><span class="p">,</span> <span class="p">[</span><span class="nv">Name</span><span class="p">,</span> <span class="nv">Version</span><span class="p">]),</span>
+  <span class="nv">PrevVsn</span>   <span class="o">=</span> <span class="nn">io_lib</span><span class="p">:</span><span class="nf">format</span><span class="p">(</span><span class="s">"</span><span class="si">~s</span><span class="s">-</span><span class="si">~s</span><span class="s">"</span><span class="p">,</span> <span class="p">[</span><span class="nv">Name</span><span class="p">,</span> <span class="nv">PVersion</span><span class="p">]),</span>
+  <span class="nn">io</span><span class="p">:</span><span class="nf">format</span><span class="p">(</span><span class="s">"version: '</span><span class="si">~s</span><span class="s">'</span><span class="si">~n</span><span class="s">"</span><span class="p">,</span> <span class="p">[</span><span class="nv">Version</span><span class="p">]),</span>
+  <span class="nv">AppVers</span>   <span class="o">=</span> <span class="p">[{</span><span class="nv">A</span><span class="p">,</span><span class="nf">appver</span><span class="p">(</span><span class="nv">A</span><span class="p">)}</span> <span class="p">||</span> <span class="nv">A</span> <span class="o">&lt;-</span> <span class="o">?</span><span class="nv">RELAPPS</span><span class="p">],</span>
+  <span class="nv">Rel</span>       <span class="o">=</span> 
+<span class="s">"{release, 
+    {</span><span class="se">\"</span><span class="si">~s</span><span class="se">\"</span><span class="s">, </span><span class="se">\"</span><span class="si">~s</span><span class="se">\"</span><span class="s">}, 
+    {erts, </span><span class="se">\"</span><span class="si">~s</span><span class="se">\"</span><span class="s">}, 
+    [   {</span><span class="si">~w</span><span class="s">, </span><span class="se">\"</span><span class="si">~s</span><span class="se">\"</span><span class="s">},</span><span class="si">~n</span><span class="s">        "</span>
+    <span class="o">++</span>
+    <span class="nn">string</span><span class="p">:</span><span class="nf">join</span><span class="p">([</span><span class="nn">io_lib</span><span class="p">:</span><span class="nf">format</span><span class="p">(</span><span class="s">"{</span><span class="si">~w</span><span class="s">, </span><span class="se">\"</span><span class="si">~s</span><span class="se">\"</span><span class="s">}"</span><span class="p">,[</span><span class="nv">A</span><span class="p">,</span><span class="nv">AV</span><span class="p">])</span> <span class="p">||</span> <span class="p">{</span><span class="nv">A</span><span class="p">,</span><span class="nv">AV</span><span class="p">}</span> <span class="o">&lt;-</span> <span class="nv">AppVers</span><span class="p">],</span> 
+                <span class="s">",</span><span class="se">\n</span><span class="s">        "</span><span class="p">)</span>
+    <span class="o">++</span>
+<span class="s">"</span><span class="se">\n</span><span class="s">    ]</span><span class="se">\n</span><span class="s">}.</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span>
+  <span class="nv">RelText</span>   <span class="o">=</span> <span class="nn">io_lib</span><span class="p">:</span><span class="nf">format</span><span class="p">(</span><span class="nv">Rel</span><span class="p">,</span> <span class="p">[</span><span class="nv">Name</span><span class="p">,</span> <span class="nv">Version</span><span class="p">,</span> <span class="nv">Erts</span><span class="p">,</span> <span class="nb">list_to_atom</span><span class="p">(</span><span class="nv">Name</span><span class="p">),</span> <span class="nv">Version</span><span class="p">]),</span>
+  <span class="nv">Relfile</span>   <span class="o">=</span> <span class="nn">io_lib</span><span class="p">:</span><span class="nf">format</span><span class="p">(</span><span class="s">"</span><span class="si">~s</span><span class="s">.rel"</span><span class="p">,</span> <span class="p">[</span><span class="nv">Vsn</span><span class="p">]),</span>
+  <span class="nn">io</span><span class="p">:</span><span class="nf">format</span><span class="p">(</span><span class="s">"Writing </span><span class="si">~s~n</span><span class="s">"</span><span class="p">,</span> <span class="p">[</span><span class="nv">Relfile</span><span class="p">]),</span>
+  <span class="p">{</span><span class="n">ok</span><span class="p">,</span> <span class="nv">Fs</span><span class="p">}</span>  <span class="o">=</span> <span class="nn">file</span><span class="p">:</span><span class="nf">open</span><span class="p">(</span><span class="nv">Relfile</span><span class="p">,</span> <span class="p">[</span><span class="n">write</span><span class="p">]),</span>
+  <span class="nn">io</span><span class="p">:</span><span class="nf">format</span><span class="p">(</span><span class="nv">Fs</span><span class="p">,</span> <span class="nv">RelText</span><span class="p">,</span> <span class="p">[]),</span>
+  <span class="nn">file</span><span class="p">:</span><span class="nf">close</span><span class="p">(</span><span class="nv">Fs</span><span class="p">),</span>
+  <span class="nn">io</span><span class="p">:</span><span class="nf">format</span><span class="p">(</span><span class="s">"make_script(</span><span class="si">~s</span><span class="s">)..</span><span class="si">~n</span><span class="s">"</span><span class="p">,</span> <span class="p">[</span><span class="nv">Vsn</span><span class="p">]),</span>
+  <span class="n">ok</span> <span class="o">=</span> <span class="nn">systools</span><span class="p">:</span><span class="nf">make_script</span><span class="p">(</span><span class="nv">Vsn</span><span class="p">),</span>
+  <span class="k">case</span> <span class="nv">PVersion</span> <span class="k">of</span> 
+    <span class="s">"0"</span> <span class="o">-&gt;</span> <span class="nn">io</span><span class="p">:</span><span class="nf">format</span><span class="p">(</span><span class="s">"Previous version 0, not generating relup!</span><span class="si">~n</span><span class="s">"</span><span class="p">,</span> <span class="p">[]);</span>
+    <span class="p">_</span>   <span class="o">-&gt;</span> <span class="n">ok</span> <span class="o">=</span> <span class="nn">systools</span><span class="p">:</span><span class="nf">make_relup</span><span class="p">(</span><span class="nv">Vsn</span><span class="p">,</span> <span class="p">[</span><span class="nv">PrevVsn</span><span class="p">],</span> <span class="p">[</span><span class="nv">PrevVsn</span><span class="p">])</span>
+  <span class="k">end</span><span class="p">,</span>
+  <span class="n">ok</span> <span class="o">=</span> <span class="nn">systools</span><span class="p">:</span><span class="nf">make_tar</span><span class="p">(</span><span class="nv">Vsn</span><span class="p">),</span>
+  <span class="nf">halt</span><span class="p">().</span>
+</code></pre></div></div>
+
+<h2 id="making-a-second-release">Making a second release</h2>
+
+<p>Here's how I currently make a new release that can be deployed with a live-upgrade:</p>
+<ol>
+<li>Fix bugs, change some stuff, add features etc;</li>
+<li>Update ebin/irccloud.app to increase the version number, update the modules list if needed;</li>
+<li>Create/modify ebin/irccloud.appup to tell release_handler how to upgrade from the previous version to this new version. (See: Appup Cookbook);</li>
+<li><code>cd releases/</code></li>
+<li><code>./release_helper.sh "../rel/irccloud" "1" "2"</code> # (where "1" was the version of the first release using rebar generate, "2" is the new one we want to package)</li>
+</ol>
+<p>Now I have irccloud-2.tar.gz in the releases/ directory, ready to be deployed. My packaging scripts also tag the release in git and a few other things I've omitted for clarity.</p>
+<h2>Deploying the release</h2>
+<ol>
+<li><code>$ cp irccloud-2.tar.gz ../rel/irccloud/releases</code> # or copy to whereever you put your target system on the production box instead of ../rel/irccloud</li>
+<li><code>erl&gt; release_handler:unpack_release("irccloud-2").</code></li>
+<li><code>erl&gt; release_handler:install_release("2").</code></li>
+<li><code>erl&gt; release_handler:which_releases().</code></li>
+<li><code>erl&gt; release_handler:make_permanent("2").</code></li>
+</ol>
+<p>Step 3 does the upgrade, and runs the appup stuff - hope you tested on your development rig before deploying to production!<br />
+If you wrote your .appup properly, it is also safe to downgrade - just do <code>release_helper:install_release("1").</code> after step 3.</p>
+<p>Note, you must run erl with "-boot start_sasl" to use release_manager. I ran this from the same shell as "bin/irccloud console" which already had sasl running.</p>
+<h2>Mochiweb caveat</h2>
+<p>I'm using the excellent <a title="Mochiweb: I love it." href="http://github.com/mochi/mochiweb" target="_blank">Mochiweb HTTP library</a> in my application. Here's the child specification from my top level supervisor:</p>
+<pre lang="erlang">{irccloud_web,
+    {irccloud_web, start, [WebConfig]},
+     permanent, 5000, worker, dynamic}</pre>
+<p>Note that it says 'dynamic' in place of the modules list. Here's what the <a href="http://erldocs.com/R14A/stdlib/supervisor.html">fine manual</a> says:</p>
+<blockquote><p><strong>Modules</strong> is used by the release handler during code replacement to determine which processes are using a certain module. As a rule of thumb Modules should be a list with one element [Module], where Module is the callback module, if the child process is a supervisor, gen_server or gen_fsm. If the child process is an event manager (gen_event) with a dynamic set of callback modules, Modules should be dynamic. See OTP Design Principles for more information about release handling.</p></blockquote>
+<p>What it doesn't say is that release_handler will timeout and screw your install because it can't find the list of modules when dynamic is specified, unless you answer correctly.</p>
+<p>Here's how to appease release_handler if you have a dynamic modules list: <a href="http://github.com/RJ/mochiweb/commit/931c5fb769be844c307a51596898ca6c55998219">http://github.com/RJ/mochiweb/commit/931c5fb769be844c307a51596898ca6c55998219</a></p>
+<h2>In Conclusion</h2>
+<p>In general, this was a rather painful experience.</p>
+<p>What I'd like to be able to do is something like this:</p>
+<ol>
+<li>"rebar make_tar newver=&lt;newversion&gt;"</li>
+<li>version in the .app file is automatically incremented for me, modules list is updated. (open $EDITOR for confirmation/additional tweaks)</li>
+<li>Unless I manually wrote it already, .appup is automatically populated with {load_module, Mod} for each module that changed since last version was packaged, opened in $EDITOR so I can tweak/review.</li>
+<li>irccloud-&lt;newver&gt;.tar.gz is created</li>
+</ol>
+<p>Maybe I've missed something, and there's a much easier way to package subsequent releases with rebar, or something else I've overlooked.<br />
+How do you package and deploy your Erlang applications to do live-updates?</p>
+
+            </div>
+            <footer class="post-footer">
+               <hr>
+            </footer>
+            
+<section id="comments-area" class="comments-area">
+
+<script src="https://utteranc.es/client.js"
+    repo="RJ/www.metabrew.com"
+    issue-term="pathname"
+    label="comment"
+    theme="github-light"
+    crossorigin="anonymous"
+    async>
+</script>
+
+</section>
+
+        </article>
+        
+
+        <section class="read-next inner">
+            <h2 class="read-next-title">Read Next</h2>
+            
+            <article class="post">
+                <header class="post-header">
+                    <div class="post-meta">
+                        <time class="published" datetime="October 21, 2009">October 21, 2009</time>
+                    </div>
+                    <h3 class="post-title"><a href="/article/rewriting-playdar-c-to-erlang-massive-savings">Rewriting Playdar: C++ to Erlang, massive savings</a></h3>
+                    <p class="post-tags">
+                        
+                        
+                        
+                        <a href='/tag/programming/'>Programming</a>
+                        
+                        
+                        
+                        <a href='/tag/erlang/'>Erlang</a>
+                        
+                        
+                        
+                        <a href='/tag/c/'>C</a>
+                        
+                        
+                        
+                        <a href='/tag/playdar/'>Playdar</a>
+                        
+                        
+                        
+                        <a href='/tag/rewrite/'>Rewrite</a>
+                        
+                        
+                        
+                    </p>
+                </header>
+            </article>
+            
+            
+            <article class="post">
+                <header class="post-header">
+                    <div class="post-meta">
+                        <time class="published" datetime="March 26, 2011">March 26, 2011</time>
+                    </div>
+                    <h3 class="post-title"><a href="/article/erlang-rebar-tutorial-generating-releases-upgrades">Erlang rebar tutorial: generating releases and upgrades</a></h3>
+                    <p class="post-tags">
+                        
+                        
+                        
+                        <a href='/tag/programming/'>Programming</a>
+                        
+                        
+                        
+                        <a href='/tag/erlang/'>Erlang</a>
+                        
+                        
+                        
+                        <a href='/tag/otp/'>Otp</a>
+                        
+                        
+                        
+                        <a href='/tag/appup/'>Appup</a>
+                        
+                        
+                        
+                        <a href='/tag/rebar/'>Rebar</a>
+                        
+                        
+                        
+                        <a href='/tag/releasehandler/'>Releasehandler</a>
+                        
+                        
+                        
+                    </p>
+                </header>
+            </article>
+            
+        </section><!-- .read-next -->
+
+        <hr>
+
+        <!-- Create a sorted array of tags -->
+         
+        <section class="tagcloud inner">
+            <h2 class="tagcloud-title">Tags</h2>
+            <div class="tag-links">
+                
+                <a href='/tag/appmon/'>appmon</a>
+                
+                <a href='/tag/appup/'>appup</a>
+                
+                <a href='/tag/bash/'>bash</a>
+                
+                <a href='/tag/c/'>c</a>
+                
+                <a href='/tag/caching/'>caching</a>
+                
+                <a href='/tag/cnode/'>cnode</a>
+                
+                <a href='/tag/comet/'>comet</a>
+                
+                <a href='/tag/databases/'>databases</a>
+                
+                <a href='/tag/deployment/'>deployment</a>
+                
+                <a href='/tag/dht/'>dht</a>
+                
+                <a href='/tag/driver/'>driver</a>
+                
+                <a href='/tag/ejabberd/'>ejabberd</a>
+                
+                <a href='/tag/erlang/'>erlang</a>
+                
+                <a href='/tag/etop/'>etop</a>
+                
+                <a href='/tag/hack/'>hack</a>
+                
+                <a href='/tag/hacks/'>hacks</a>
+                
+                <a href='/tag/hackspace/'>hackspace</a>
+                
+                <a href='/tag/hashing/'>hashing</a>
+                
+                <a href='/tag/http/'>http</a>
+                
+                <a href='/tag/irc/'>irc</a>
+                
+                <a href='/tag/irccloud/'>irccloud</a>
+                
+                <a href='/tag/java/'>java</a>
+                
+                <a href='/tag/kernel/'>kernel</a>
+                
+                <a href='/tag/ketama/'>ketama</a>
+                
+                <a href='/tag/lastfm/'>lastfm</a>
+                
+                <a href='/tag/libevent/'>libevent</a>
+                
+                <a href='/tag/life/'>life</a>
+                
+                <a href='/tag/london/'>london</a>
+                
+                <a href='/tag/memcached/'>memcached</a>
+                
+                <a href='/tag/mnesia/'>mnesia</a>
+                
+                <a href='/tag/mochiweb/'>mochiweb</a>
+                
+                <a href='/tag/netcat/'>netcat</a>
+                
+                <a href='/tag/networking/'>networking</a>
+                
+                <a href='/tag/nosql/'>nosql</a>
+                
+                <a href='/tag/otp/'>otp</a>
+                
+                <a href='/tag/php/'>php</a>
+                
+                <a href='/tag/playdar/'>playdar</a>
+                
+                <a href='/tag/programming/'>programming</a>
+                
+                <a href='/tag/rebar/'>rebar</a>
+                
+                <a href='/tag/releasehandler/'>releasehandler</a>
+                
+                <a href='/tag/rewrite/'>rewrite</a>
+                
+                <a href='/tag/sasl/'>sasl</a>
+                
+                <a href='/tag/scalability/'>scalability</a>
+                
+                <a href='/tag/spawnfest/'>spawnfest</a>
+                
+                <a href='/tag/ssh/'>ssh</a>
+                
+                <a href='/tag/streaming/'>streaming</a>
+                
+                <a href='/tag/sysops/'>sysops</a>
+                
+                <a href='/tag/talk/'>talk</a>
+                
+                <a href='/tag/tcp/'>tcp</a>
+                
+                <a href='/tag/thrift/'>thrift</a>
+                
+                <a href='/tag/uncategorized/'>uncategorized</a>
+                
+                <a href='/tag/webtool/'>webtool</a>
+                
+                <a href='/tag/xmpp/'>xmpp</a>
+                
+                <a href='/tag/yaws/'>yaws</a>
+                
+            </div><!-- .tag-links -->
+        </section><!-- .tagcloud -->
+
+    </main><!-- .site-main -->
+
+                
+
+                <footer id="colophon" class="site-footer">
+    <p class="site-info inner">
+        Copyright <a href="#">Metabrew.com - Richard Jones</a> &copy; 2021.
+        <br>        
+
+I release all embedded source code in my blog articles to the public domain, unless otherwise specified.
+
+Article text released under the <a href="http://creativecommons.org/licenses/by-nc/4.0/">Creative Commons Attribution-NonCommercial 4.0 International License</a>.
+
+You don't need to ask me if you want to post a translated version of my work on your own website, but you must link back here as per the above license. 
+
+
+    </p>
+    <a id="back-to-top" class="back-to-top" href="#page">
+        <span class="icon-arrow-up" aria-hidden="true"></span>
+        <span class="screen-reader-text">Back to top</span>
+    </a>
+</footer><!-- .site-footer -->
+            </div><!-- .inner-wide -->
+        </div><!-- .site-content -->
+    </div><!-- .site -->
+
+    
+    <!-- Javascript Assets -->
+    <script src="/assets/js/jquery-3.3.1.min.js"></script>
+    <script src="/assets/js/plugins.js"></script>
+    <script src="/assets/js/custom.js"></script>
+
+</body>
+
+</html>

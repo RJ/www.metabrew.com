@@ -1,0 +1,1362 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    
+        <!-- Begin Jekyll SEO tag v2.7.1 -->
+<title>A Million-user Comet Application with Mochiweb, Part 3 | Richard Jones</title>
+<meta name="generator" content="Jekyll v4.2.0" />
+<meta property="og:title" content="A Million-user Comet Application with Mochiweb, Part 3" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="In Part 1 and Part 2 of this series we built a comet application using mochiweb, and learned how to route messages to connected users. We managed to squeeze application memory down to 8KB per connection. We did ye olde c10k test, and observed what happened with 10,000 connected users. We made graphs. It was fun, but now it’s time to make good on the claims made in the title, and turn it up to 1 million connections." />
+<meta property="og:description" content="In Part 1 and Part 2 of this series we built a comet application using mochiweb, and learned how to route messages to connected users. We managed to squeeze application memory down to 8KB per connection. We did ye olde c10k test, and observed what happened with 10,000 connected users. We made graphs. It was fun, but now it’s time to make good on the claims made in the title, and turn it up to 1 million connections." />
+<meta property="og:site_name" content="Richard Jones" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2008-11-04T00:00:00+00:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="A Million-user Comet Application with Mochiweb, Part 3" />
+<script type="application/ld+json">
+{"datePublished":"2008-11-04T00:00:00+00:00","mainEntityOfPage":{"@type":"WebPage","@id":"/article/a-million-user-comet-application-with-mochiweb-part-3"},"url":"/article/a-million-user-comet-application-with-mochiweb-part-3","description":"In Part 1 and Part 2 of this series we built a comet application using mochiweb, and learned how to route messages to connected users. We managed to squeeze application memory down to 8KB per connection. We did ye olde c10k test, and observed what happened with 10,000 connected users. We made graphs. It was fun, but now it’s time to make good on the claims made in the title, and turn it up to 1 million connections.","headline":"A Million-user Comet Application with Mochiweb, Part 3","dateModified":"2008-11-04T00:00:00+00:00","@type":"BlogPosting","@context":"https://schema.org"}</script>
+<!-- End Jekyll SEO tag -->
+
+    
+
+    <link type="application/atom+xml" rel="alternate" href="/feed.xml" title="Richard Jones" />
+
+    <link rel="apple-touch-icon" sizes="180x180" href="/assets/favicon/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/assets/favicon/favicon-16x16.png">
+    <link rel="manifest" href="/assets/favicon/site.webmanifest">
+
+	<link href="https://fonts.googleapis.com/css?family=Crimson+Text:400,400i,600,600i|Karla:400,400i,700,700i" rel="stylesheet">
+
+    <link href="/assets/css/style.css" rel="stylesheet">
+</head>
+
+
+
+<body class="layout-post">
+    <div id="page" class="site">
+        <header id="masthead" class="site-header">
+    <div class="site-header-wrap">
+        <div class="site-header-inside">
+
+            <div class="site-branding">
+                
+                <p class="profile">
+                    <a href="/">
+                        <img src="/assets/images/rj-headshot.jpg" alt="'s Picture"
+                            class="avatar" />
+                    </a>
+                </p>
+                <div class="site-identity">
+                    
+                    <h1 class="site-title">
+                        <a href="/">Richard Jones</a>
+                    </h1>
+                    
+
+                    <p class="site-description">Logbook / blog / devlog</p>
+
+
+                </div><!-- .site-identity -->
+                
+                <button id="menu-toggle" class="menu-toggle"><span class="screen-reader-text">Main Menu</span><span
+                        class="icon-menu" aria-hidden="true"></span></button>
+            </div><!-- .site-branding -->
+
+            <nav id="main-navigation" class="site-navigation" aria-label="Main Navigation">
+                <div class="site-nav-wrap">
+                    <div class="site-nav-inside">
+                    <ul class="menu">
+                        
+                        
+                        
+                        <li class="menu-item "><a href="/">Home</a></li>
+                        
+                        
+                        
+                        <li class="menu-item "><a href="/about">About</a></li>
+                        
+                        
+                        
+                        <li class="menu-item "><a href="/contact">Contact Me</a></li>
+                        
+                        
+                        
+                        <li class="menu-item "><a href="/search">Search</a></li>
+                        
+                    </ul>
+
+                    <p class="social-links">
+
+    <a href="https://twitter.com/metabrew" target="_blank">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path d="M459.37 151.716c.325 4.548.325 9.097.325 13.645 0 138.72-105.583 298.558-298.558 298.558-59.452 0-114.68-17.219-161.137-47.106 8.447.974 16.568 1.299 25.34 1.299 49.055 0 94.213-16.568 130.274-44.832-46.132-.975-84.792-31.188-98.112-72.772 6.498.974 12.995 1.624 19.818 1.624 9.421 0 18.843-1.3 27.614-3.573-48.081-9.747-84.143-51.98-84.143-102.985v-1.299c13.969 7.797 30.214 12.67 47.431 13.319-28.264-18.843-46.781-51.005-46.781-87.391 0-19.492 5.197-37.36 14.294-52.954 51.655 63.675 129.3 105.258 216.365 109.807-1.624-7.797-2.599-15.918-2.599-24.04 0-57.828 46.782-104.934 104.934-104.934 30.213 0 57.502 12.67 76.67 33.137 23.715-4.548 46.456-13.32 66.599-25.34-7.798 24.366-24.366 44.833-46.132 57.827 21.117-2.273 41.584-8.122 60.426-16.243-14.292 20.791-32.161 39.308-52.628 54.253z"/></svg>
+<!--
+Font Awesome Free 5.5.0 by @fontawesome - https://fontawesome.com
+License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License)
+-->
+    </a>
+
+    <a href="https://github.com/RJ" target="_blank">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg>
+<!--
+Font Awesome Free 5.5.0 by @fontawesome - https://fontawesome.com
+License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License)
+-->
+    </a>
+    
+    <a href="https://www.last.fm/user/RJ" target="_blank">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path d="M400 32H48C21.5 32 0 53.5 0 80v352c0 26.5 21.5 48 48 48h352c26.5 0 48-21.5 48-48V80c0-26.5-21.5-48-48-48zm-92.2 312.9c-63.4 0-85.4-28.6-97.1-64.1c-16.3-51-21.5-84.3-63-84.3c-22.4 0-45.1 16.1-45.1 61.2c0 35.2 18 57.2 43.3 57.2c28.6 0 47.6-21.3 47.6-21.3l11.7 31.9s-19.8 19.4-61.2 19.4c-51.3 0-79.9-30.1-79.9-85.8c0-57.9 28.6-92 82.5-92c73.5 0 80.8 41.4 100.8 101.9c8.8 26.8 24.2 46.2 61.2 46.2c24.9 0 38.1-5.5 38.1-19.1c0-19.9-21.8-22-49.9-28.6c-30.4-7.3-42.5-23.1-42.5-48c0-40 32.3-52.4 65.2-52.4c37.4 0 60.1 13.6 63 46.6l-36.7 4.4c-1.5-15.8-11-22.4-28.6-22.4c-16.1 0-26 7.3-26 19.8c0 11 4.8 17.6 20.9 21.3c32.7 7.1 71.8 12 71.8 57.5c.1 36.7-30.7 50.6-76.1 50.6z"/></svg>
+    </a>
+
+    <a href="/rss.xml" target="_blank">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><path d="M128.081 415.959c0 35.369-28.672 64.041-64.041 64.041S0 451.328 0 415.959s28.672-64.041 64.041-64.041 64.04 28.673 64.04 64.041zm175.66 47.25c-8.354-154.6-132.185-278.587-286.95-286.95C7.656 175.765 0 183.105 0 192.253v48.069c0 8.415 6.49 15.472 14.887 16.018 111.832 7.284 201.473 96.702 208.772 208.772.547 8.397 7.604 14.887 16.018 14.887h48.069c9.149.001 16.489-7.655 15.995-16.79zm144.249.288C439.596 229.677 251.465 40.445 16.503 32.01 7.473 31.686 0 38.981 0 48.016v48.068c0 8.625 6.835 15.645 15.453 15.999 191.179 7.839 344.627 161.316 352.465 352.465.353 8.618 7.373 15.453 15.999 15.453h48.068c9.034-.001 16.329-7.474 16.005-16.504z"/></svg>
+<!--
+Font Awesome Free 5.5.0 by @fontawesome - https://fontawesome.com
+License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License)
+-->
+    </a>
+    
+</p>
+
+                    </div><!-- .site-nav-inside -->
+                </div><!-- .site-nav-wrap -->
+            </nav><!-- .site-navigation -->
+
+            <!-- <div>
+                Foo bar
+
+            </div> -->
+
+        </div><!-- .site-header-inside -->
+    </div><!-- .site-header-wrap -->
+</header><!-- .site-header -->
+        <div id="content" class="site-content fadeInDown">
+            <div class="inner-wide">
+                    <main id="main" class="site-main">
+    
+        <article class="post-full inner">
+
+            <header class="post-header">
+                <div class="post-meta">
+                    Published <time class="post-date" datetime="2008-11-04">November 4,
+                        2008</time>
+                </div><!-- .post-meta -->
+                <h1 class="post-title">A Million-user Comet Application with Mochiweb, Part 3</h1>
+                
+                <div class="post-tags">
+                     
+                    <a href='/tag/programming/'>programming</a>
+                    
+                     
+                    <a href='/tag/erlang/'>erlang</a>
+                    
+                     
+                    <a href='/tag/c/'>c</a>
+                    
+                     
+                    <a href='/tag/comet/'>comet</a>
+                    
+                     
+                    <a href='/tag/mochiweb/'>mochiweb</a>
+                    
+                     
+                    <a href='/tag/libevent/'>libevent</a>
+                    
+                     
+                    <a href='/tag/cnode/'>cnode</a>
+                    
+                    
+                </div>
+                
+            </header><!-- .post-header -->
+
+            
+            <div class="post-content">
+                <p>In <a href="http://www.metabrew.com/article/a-million-user-comet-application-with-mochiweb-part-1/">Part 1</a> and <a href="http://www.metabrew.com/article/a-million-user-comet-application-with-mochiweb-part-2/">Part 2</a> of this series we built a comet application using mochiweb, and learned how to route messages to connected users. We managed to squeeze application memory down to 8KB per connection. We did ye olde c10k test, and observed what happened with 10,000 connected users. We made graphs. It was fun, but now it’s time to make good on the claims made in the title, and turn it up to 1 million connections.</p>
+
+<p>This post covers the following:</p>
+<ul>
+	<li>Add a pubsub-like subscription database using Mnesia</li>
+	<li>Generate a realistic friends dataset for a million users</li>
+	<li>Tune mnesia and bulk load in our friends data</li>
+	<li>Opening a million connections from one machine</li>
+	<li>Benchmark with 1 Million connected users</li>
+	<li>Libevent + C for connection handling</li>
+	<li>Final thoughts</li>
+</ul>
+
+<p>One of the challenging parts of this test was actually being able to open 1M connections from a single test machine. Writing a server to accept 1M connections is easier than actually creating 1M connections to test it with, so a fair amount of this article is about the techniques used to open 1M connections from a single machine.</p>
+
+<h2 id="getting-our-pubsub-on">Getting our pubsub on</h2>
+
+<p>In <a href="http://www.metabrew.com/article/a-million-user-comet-application-with-mochiweb-part-2/">Part 2</a> we used the router to send messages to specific users. This is fine for a chat/IM system, but that there are sexier things we could do instead. Before we launch into a large-scale test, let’s add one more module - a subscription database. We want the application store who your friends are, so it can push you all events generated by people on your friends list.</p>
+
+<p>My intention is to use this for Last.fm so I can get a realtime feed of songs <a href="http://www.last.fm/user/RJ/friends">my friends</a> are currently listening to.  It could equally apply to other events generated on social networks. Flickr photo uploads, Facebook newsfeed items, Twitter messages etc. FriendFeed even have a realtime API in beta, so this kind of thing is definitely topical. (Although I’ve not heard of anyone except Facebook using Erlang for this kind of thing).</p>
+
+<h2 id="implementing-the-subscription-manager">Implementing the subscription-manager</h2>
+
+<p>We’re implementing a general subscription manager, but we’ll be subscribing people to everyone on their friends list automatically - so you could also think of this as a friends database for now.</p>
+
+<p>The subsmanager API:</p>
+<ul>
+	<li>add_subscriptions([{Subscriber, Subscribee},...])</li>
+	<li>remove_subscriptions([{Subscriber, Subscribee},...])</li>
+	<li>get_subscribers(User)</li>
+</ul>
+
+<p>subsmanager.erl</p>
+
+<div class="language-erlang highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">-</span><span class="ni">module</span><span class="p">(</span><span class="n">subsmanager</span><span class="p">).</span>
+<span class="p">-</span><span class="ni">behaviour</span><span class="p">(</span><span class="n">gen_server</span><span class="p">).</span>
+<span class="p">-</span><span class="ni">include</span><span class="p">(</span><span class="s">"/usr/local/lib/erlang/lib/stdlib-1.15.4/include/qlc.hrl"</span><span class="p">).</span>
+<span class="p">-</span><span class="ni">export</span><span class="p">([</span><span class="n">init</span><span class="o">/</span><span class="mi">1</span><span class="p">,</span> <span class="n">handle_call</span><span class="o">/</span><span class="mi">3</span><span class="p">,</span> <span class="n">handle_cast</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span> <span class="n">handle_info</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span> <span class="n">terminate</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span> <span class="n">code_change</span><span class="o">/</span><span class="mi">3</span><span class="p">]).</span>
+<span class="p">-</span><span class="ni">export</span><span class="p">([</span><span class="n">add_subscriptions</span><span class="o">/</span><span class="mi">1</span><span class="p">,</span>
+         <span class="n">remove_subscriptions</span><span class="o">/</span><span class="mi">1</span><span class="p">,</span>
+         <span class="n">get_subscribers</span><span class="o">/</span><span class="mi">1</span><span class="p">,</span>
+         <span class="n">first_run</span><span class="o">/</span><span class="mi">0</span><span class="p">,</span>
+         <span class="n">stop</span><span class="o">/</span><span class="mi">0</span><span class="p">,</span>
+         <span class="n">start_link</span><span class="o">/</span><span class="mi">0</span><span class="p">]).</span>
+<span class="p">-</span><span class="ni">record</span><span class="p">(</span><span class="nl">subscription</span><span class="p">,</span> <span class="p">{</span><span class="n">subscriber</span><span class="p">,</span> <span class="n">subscribee</span><span class="p">}).</span>
+<span class="p">-</span><span class="ni">record</span><span class="p">(</span><span class="nl">state</span><span class="p">,</span> <span class="p">{}).</span> <span class="c">% state is all in mnesia
+</span><span class="p">-</span><span class="ni">define</span><span class="p">(</span><span class="no">SERVER</span><span class="p">,</span> <span class="nn">global</span><span class="p">:</span><span class="nf">whereis_name</span><span class="p">(</span><span class="o">?</span><span class="nv">MODULE</span><span class="p">)).</span>
+
+<span class="nf">start_link</span><span class="p">()</span> <span class="o">-&gt;</span>
+    <span class="nn">gen_server</span><span class="p">:</span><span class="nf">start_link</span><span class="p">({</span><span class="n">global</span><span class="p">,</span> <span class="o">?</span><span class="nv">MODULE</span><span class="p">},</span> <span class="o">?</span><span class="nv">MODULE</span><span class="p">,</span> <span class="p">[],</span> <span class="p">[]).</span>
+
+<span class="nf">stop</span><span class="p">()</span> <span class="o">-&gt;</span>
+    <span class="nn">gen_server</span><span class="p">:</span><span class="nf">call</span><span class="p">(</span><span class="o">?</span><span class="nv">SERVER</span><span class="p">,</span> <span class="p">{</span><span class="n">stop</span><span class="p">}).</span>
+
+<span class="nf">add_subscriptions</span><span class="p">(</span><span class="nv">SubsList</span><span class="p">)</span> <span class="o">-&gt;</span>
+    <span class="nn">gen_server</span><span class="p">:</span><span class="nf">call</span><span class="p">(</span><span class="o">?</span><span class="nv">SERVER</span><span class="p">,</span> <span class="p">{</span><span class="n">add_subscriptions</span><span class="p">,</span> <span class="nv">SubsList</span><span class="p">},</span> <span class="n">infinity</span><span class="p">).</span>
+
+<span class="nf">remove_subscriptions</span><span class="p">(</span><span class="nv">SubsList</span><span class="p">)</span> <span class="o">-&gt;</span>
+    <span class="nn">gen_server</span><span class="p">:</span><span class="nf">call</span><span class="p">(</span><span class="o">?</span><span class="nv">SERVER</span><span class="p">,</span> <span class="p">{</span><span class="n">remove_subscriptions</span><span class="p">,</span> <span class="nv">SubsList</span><span class="p">},</span> <span class="n">infinity</span><span class="p">).</span>
+
+<span class="nf">get_subscribers</span><span class="p">(</span><span class="nv">User</span><span class="p">)</span> <span class="o">-&gt;</span>
+    <span class="nn">gen_server</span><span class="p">:</span><span class="nf">call</span><span class="p">(</span><span class="o">?</span><span class="nv">SERVER</span><span class="p">,</span> <span class="p">{</span><span class="n">get_subscribers</span><span class="p">,</span> <span class="nv">User</span><span class="p">}).</span>
+
+<span class="c">%%
+</span>
+<span class="nf">init</span><span class="p">([])</span> <span class="o">-&gt;</span>
+    <span class="n">ok</span> <span class="o">=</span> <span class="nn">mnesia</span><span class="p">:</span><span class="nf">start</span><span class="p">(),</span>
+    <span class="nn">io</span><span class="p">:</span><span class="nf">format</span><span class="p">(</span><span class="s">"Waiting on mnesia tables..</span><span class="se">\n</span><span class="s">"</span><span class="p">,[]),</span>
+    <span class="nn">mnesia</span><span class="p">:</span><span class="nf">wait_for_tables</span><span class="p">([</span><span class="n">subscription</span><span class="p">],</span> <span class="mi">30000</span><span class="p">),</span>
+    <span class="nv">Info</span> <span class="o">=</span> <span class="nn">mnesia</span><span class="p">:</span><span class="nf">table_info</span><span class="p">(</span><span class="n">subscription</span><span class="p">,</span> <span class="n">all</span><span class="p">),</span>
+    <span class="nn">io</span><span class="p">:</span><span class="nf">format</span><span class="p">(</span><span class="s">"OK. Subscription table info: </span><span class="se">\n</span><span class="si">~w</span><span class="se">\n\n</span><span class="s">"</span><span class="p">,[</span><span class="nv">Info</span><span class="p">]),</span>
+    <span class="p">{</span><span class="n">ok</span><span class="p">,</span> <span class="nl">#state</span><span class="p">{}</span> <span class="p">}.</span>
+
+<span class="nf">handle_call</span><span class="p">({</span><span class="n">stop</span><span class="p">},</span> <span class="p">_</span><span class="nv">From</span><span class="p">,</span> <span class="nv">State</span><span class="p">)</span> <span class="o">-&gt;</span>
+    <span class="p">{</span><span class="n">stop</span><span class="p">,</span> <span class="n">stop</span><span class="p">,</span> <span class="nv">State</span><span class="p">};</span>
+
+<span class="nf">handle_call</span><span class="p">({</span><span class="n">add_subscriptions</span><span class="p">,</span> <span class="nv">SubsList</span><span class="p">},</span> <span class="p">_</span><span class="nv">From</span><span class="p">,</span> <span class="nv">State</span><span class="p">)</span> <span class="o">-&gt;</span>
+    <span class="c">% Transactionally is slower:
+</span>    <span class="c">% F = fun() -&gt;
+</span>    <span class="c">%         [ ok = mnesia:write(S) || S &lt;- SubsList ]
+</span>    <span class="c">%     end,
+</span>    <span class="c">% mnesia:transaction(F),
+</span>    <span class="p">[</span> <span class="nn">mnesia</span><span class="p">:</span><span class="nf">dirty_write</span><span class="p">(</span><span class="nv">S</span><span class="p">)</span> <span class="p">||</span> <span class="nv">S</span> <span class="o">&lt;-</span> <span class="nv">SubsList</span> <span class="p">],</span>
+    <span class="p">{</span><span class="n">reply</span><span class="p">,</span> <span class="n">ok</span><span class="p">,</span> <span class="nv">State</span><span class="p">};</span>
+
+<span class="nf">handle_call</span><span class="p">({</span><span class="n">remove_subscriptions</span><span class="p">,</span> <span class="nv">SubsList</span><span class="p">},</span> <span class="p">_</span><span class="nv">From</span><span class="p">,</span> <span class="nv">State</span><span class="p">)</span> <span class="o">-&gt;</span>
+    <span class="nv">F</span> <span class="o">=</span> <span class="k">fun</span><span class="p">()</span> <span class="o">-&gt;</span>
+        <span class="p">[</span> <span class="n">ok</span> <span class="o">=</span> <span class="nn">mnesia</span><span class="p">:</span><span class="nf">delete_object</span><span class="p">(</span><span class="nv">S</span><span class="p">)</span> <span class="p">||</span> <span class="nv">S</span> <span class="o">&lt;-</span> <span class="nv">SubsList</span> <span class="p">]</span>
+    <span class="k">end</span><span class="p">,</span>
+    <span class="nn">mnesia</span><span class="p">:</span><span class="nf">transaction</span><span class="p">(</span><span class="nv">F</span><span class="p">),</span>
+    <span class="p">{</span><span class="n">reply</span><span class="p">,</span> <span class="n">ok</span><span class="p">,</span> <span class="nv">State</span><span class="p">};</span>
+
+<span class="nf">handle_call</span><span class="p">({</span><span class="n">get_subscribers</span><span class="p">,</span> <span class="nv">User</span><span class="p">},</span> <span class="nv">From</span><span class="p">,</span> <span class="nv">State</span><span class="p">)</span> <span class="o">-&gt;</span>
+    <span class="nv">F</span> <span class="o">=</span> <span class="k">fun</span><span class="p">()</span> <span class="o">-&gt;</span>
+        <span class="nv">Subs</span> <span class="o">=</span> <span class="nn">mnesia</span><span class="p">:</span><span class="nf">dirty_match_object</span><span class="p">(</span><span class="nl">#subscription</span><span class="p">{</span><span class="n">subscriber</span><span class="o">=</span><span class="n">'_'</span><span class="p">,</span> <span class="n">subscribee</span><span class="o">=</span><span class="nv">User</span><span class="p">}),</span>
+        <span class="nv">Users</span> <span class="o">=</span> <span class="p">[</span><span class="nv">Dude</span> <span class="p">||</span> <span class="nl">#subscription</span><span class="p">{</span><span class="n">subscriber</span><span class="o">=</span><span class="nv">Dude</span><span class="p">,</span> <span class="n">subscribee</span><span class="o">=</span><span class="p">_}</span> <span class="o">&lt;-</span> <span class="nv">Subs</span><span class="p">],</span>
+        <span class="nn">gen_server</span><span class="p">:</span><span class="nf">reply</span><span class="p">(</span><span class="nv">From</span><span class="p">,</span> <span class="nv">Users</span><span class="p">)</span>
+    <span class="k">end</span><span class="p">,</span>
+    <span class="nb">spawn</span><span class="p">(</span><span class="nv">F</span><span class="p">),</span>
+    <span class="p">{</span><span class="n">noreply</span><span class="p">,</span> <span class="nv">State</span><span class="p">}.</span>
+
+<span class="nf">handle_cast</span><span class="p">(_</span><span class="nv">Msg</span><span class="p">,</span> <span class="nv">State</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="p">{</span><span class="n">noreply</span><span class="p">,</span> <span class="nv">State</span><span class="p">}.</span>
+<span class="nf">handle_info</span><span class="p">(_</span><span class="nv">Msg</span><span class="p">,</span> <span class="nv">State</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="p">{</span><span class="n">noreply</span><span class="p">,</span> <span class="nv">State</span><span class="p">}.</span>
+
+<span class="nf">terminate</span><span class="p">(_</span><span class="nv">Reason</span><span class="p">,</span> <span class="p">_</span><span class="nv">State</span><span class="p">)</span> <span class="o">-&gt;</span>
+    <span class="nn">mnesia</span><span class="p">:</span><span class="nf">stop</span><span class="p">(),</span>
+    <span class="n">ok</span><span class="p">.</span>
+
+<span class="nf">code_change</span><span class="p">(_</span><span class="nv">OldVersion</span><span class="p">,</span> <span class="nv">State</span><span class="p">,</span> <span class="p">_</span><span class="nv">Extra</span><span class="p">)</span> <span class="o">-&gt;</span>
+    <span class="nn">io</span><span class="p">:</span><span class="nf">format</span><span class="p">(</span><span class="s">"Reloading code for ?MODULE</span><span class="se">\n</span><span class="s">"</span><span class="p">,[]),</span>
+    <span class="p">{</span><span class="n">ok</span><span class="p">,</span> <span class="nv">State</span><span class="p">}.</span>
+
+<span class="c">%%
+</span>
+<span class="nf">first_run</span><span class="p">()</span> <span class="o">-&gt;</span>
+    <span class="nn">mnesia</span><span class="p">:</span><span class="nf">create_schema</span><span class="p">([</span><span class="nb">node</span><span class="p">()]),</span>
+    <span class="n">ok</span> <span class="o">=</span> <span class="nn">mnesia</span><span class="p">:</span><span class="nf">start</span><span class="p">(),</span>
+    <span class="nv">Ret</span> <span class="o">=</span> <span class="nn">mnesia</span><span class="p">:</span><span class="nf">create_table</span><span class="p">(</span><span class="n">subscription</span><span class="p">,</span>
+    <span class="p">[</span>
+     <span class="p">{</span><span class="n">disc_copies</span><span class="p">,</span> <span class="p">[</span><span class="nb">node</span><span class="p">()]},</span>
+     <span class="p">{</span><span class="n">attributes</span><span class="p">,</span> <span class="nf">record_info</span><span class="p">(</span><span class="n">fields</span><span class="p">,</span> <span class="n">subscription</span><span class="p">)},</span>
+     <span class="p">{</span><span class="n">index</span><span class="p">,</span> <span class="p">[</span><span class="n">subscribee</span><span class="p">]},</span> <span class="c">%index subscribee too
+</span>     <span class="p">{</span><span class="n">type</span><span class="p">,</span> <span class="n">bag</span><span class="p">}</span>
+    <span class="p">]),</span>
+    <span class="nv">Ret</span><span class="p">.</span>
+</code></pre></div></div>
+
+<p>Noteworthy points:</p>
+<ul>
+	<li>I've included qlc.hrl, needed for mnesia queries using list comprehension, using an absolute path. That can't be best practice, it wasn't finding it otherwise though.</li>
+	<li><code>get_subscribers</code> spawns another process and delegates the job of replying to that process, using <code>gen_server:reply</code>. This means the gen_server loop won't block on that call if we throw lots of lookups at it and mnesia slows down.</li>
+	<li><code>rr(”subsmanager.erl”).</code> in the example below allows you to use record definitions in the erl shell. Putting your record definitions into a <code>records.hrl</code> file and including that in your modules is considered better style. I inlined it for brevity.</li>
+</ul>
+
+<p>Now to test it. <code>first_run()</code> creates the mnesia schema, so it’s important to run that first. Another potential gotcha with mnesia is that (by default) the database can only be accessed by the node that created it, so give the erl shell a name, and stick with it.</p>
+
+<div class="language-erlang highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="sc">$ </span><span class="n">mkdir</span> <span class="o">/</span><span class="n">var</span><span class="o">/</span><span class="n">mnesia</span>
+<span class="sc">$ </span><span class="n">erl</span> <span class="o">-</span><span class="n">boot</span> <span class="n">start_sasl</span> <span class="o">-</span><span class="n">mnesia</span> <span class="n">dir</span> <span class="n">'"/var/mnesia_data"'</span> <span class="o">-</span><span class="n">sname</span> <span class="nf">subsman</span>
+<span class="p">(</span><span class="n">subsman</span><span class="p">@</span><span class="n">localhost</span><span class="p">)</span><span class="mi">1</span><span class="o">&gt;</span> <span class="nf">c</span><span class="p">(</span><span class="n">subsmanager</span><span class="p">).</span>
+<span class="p">{</span><span class="n">ok</span><span class="p">,</span><span class="n">subsmanager</span><span class="p">}</span>
+<span class="p">(</span><span class="n">subsman</span><span class="p">@</span><span class="n">localhost</span><span class="p">)</span><span class="mi">2</span><span class="o">&gt;</span> <span class="nn">subsmanager</span><span class="p">:</span><span class="nf">first_run</span><span class="p">().</span>
+<span class="p">...</span>
+<span class="p">{</span><span class="n">atomic</span><span class="p">,</span><span class="n">ok</span><span class="p">}</span>
+<span class="p">(</span><span class="n">subsman</span><span class="p">@</span><span class="n">localhost</span><span class="p">)</span><span class="mi">3</span><span class="o">&gt;</span> <span class="nn">subsmanager</span><span class="p">:</span><span class="nf">start_link</span><span class="p">().</span>
+<span class="nv">Waiting</span> <span class="n">on</span> <span class="n">mnesia</span> <span class="n">tables</span><span class="p">..</span>
+<span class="nv">OK</span><span class="p">.</span> <span class="nv">Subscription</span> <span class="n">table</span> <span class="nn">info</span><span class="p">:</span>
+<span class="p">...</span><span class="n">snipped</span><span class="p">...</span>
+<span class="p">{</span><span class="n">ok</span><span class="p">,</span><span class="o">&lt;</span><span class="mi">0</span><span class="p">.</span><span class="mi">105</span><span class="p">.</span><span class="mi">0</span><span class="o">&gt;</span><span class="p">}</span>
+<span class="p">(</span><span class="n">subsman</span><span class="p">@</span><span class="n">localhost</span><span class="p">)</span><span class="mi">4</span><span class="o">&gt;</span> <span class="nf">rr</span><span class="p">(</span><span class="s">"subsmanager.erl"</span><span class="p">).</span>
+<span class="p">[</span><span class="n">state</span><span class="p">,</span><span class="n">subscription</span><span class="p">]</span>
+<span class="p">(</span><span class="n">subsman</span><span class="p">@</span><span class="n">localhost</span><span class="p">)</span><span class="mi">5</span><span class="o">&gt;</span> <span class="nn">subsmanager</span><span class="p">:</span><span class="nf">add_subscriptions</span><span class="p">([</span> <span class="nl">#subscription</span><span class="p">{</span><span class="n">subscriber</span><span class="o">=</span><span class="n">alice</span><span class="p">,</span> <span class="n">subscribee</span><span class="o">=</span><span class="n">rj</span><span class="p">}</span> <span class="p">]).</span>
+<span class="nf">ok</span>
+<span class="p">(</span><span class="n">subsman</span><span class="p">@</span><span class="n">localhost</span><span class="p">)</span><span class="mi">6</span><span class="o">&gt;</span> <span class="nn">subsmanager</span><span class="p">:</span><span class="nf">add_subscriptions</span><span class="p">([</span> <span class="nl">#subscription</span><span class="p">{</span><span class="n">subscriber</span><span class="o">=</span><span class="n">bob</span><span class="p">,</span> <span class="n">subscribee</span><span class="o">=</span><span class="n">rj</span><span class="p">}</span> <span class="p">]).</span>
+<span class="nf">ok</span>
+<span class="p">(</span><span class="n">subsman</span><span class="p">@</span><span class="n">localhost</span><span class="p">)</span><span class="mi">7</span><span class="o">&gt;</span> <span class="nn">subsmanager</span><span class="p">:</span><span class="nf">get_subscribers</span><span class="p">(</span><span class="n">rj</span><span class="p">).</span>
+<span class="p">[</span><span class="n">bob</span><span class="p">,</span><span class="n">alice</span><span class="p">]</span>
+<span class="p">(</span><span class="n">subsman</span><span class="p">@</span><span class="n">localhost</span><span class="p">)</span><span class="mi">8</span><span class="o">&gt;</span> <span class="nn">subsmanager</span><span class="p">:</span><span class="nf">remove_subscriptions</span><span class="p">([</span> <span class="nl">#subscription</span><span class="p">{</span><span class="n">subscriber</span><span class="o">=</span><span class="n">bob</span><span class="p">,</span> <span class="n">subscribee</span><span class="o">=</span><span class="n">rj</span><span class="p">}</span> <span class="p">]).</span>
+<span class="nf">ok</span>
+<span class="p">(</span><span class="n">subsman</span><span class="p">@</span><span class="n">localhost</span><span class="p">)</span><span class="mi">9</span><span class="o">&gt;</span> <span class="nn">subsmanager</span><span class="p">:</span><span class="nf">get_subscribers</span><span class="p">(</span><span class="n">rj</span><span class="p">).</span>
+<span class="p">[</span><span class="n">alice</span><span class="p">]</span>
+<span class="p">(</span><span class="n">subsman</span><span class="p">@</span><span class="n">localhost</span><span class="p">)</span><span class="mi">10</span><span class="o">&gt;</span> <span class="nn">subsmanager</span><span class="p">:</span><span class="nf">get_subscribers</span><span class="p">(</span><span class="n">charlie</span><span class="p">).</span>
+<span class="p">[]</span>
+</code></pre></div></div>
+
+<p>We’ll use integer Ids to represent users for the benchmark - but for this test I used atoms (rj, alice, bob) and assumed that alice and bob are both on rj’s friends list. It’s nice that mnesia (and ets/dets) doesn’t care what values you use - any Erlang term is valid. This means it’s a simple upgrade to support multiple types of resource. You could start using <code>{user, 123}</code> or <code>{photo, 789}</code> to represent different things people might subscribe to, without changing anything in the subsmanager module.</p>
+
+<h2 id="modifying-the-router-to-use-subscriptions">Modifying the router to use subscriptions</h2>
+
+<p>Instead of addressing messages to specific users, ie <code>router:send(123, "Hello user 123")</code>, we’ll mark messages with a subject - that is, the person who generated the message (who played the song, who uploaded the photo etc) - and have the router deliver the message to every user who has subscribed to the subject user. In other words, the API will work like this: <code>router:send(123, "Hello everyone subscribed to user 123")</code></p>
+
+<p>Updated router.erl:</p>
+
+<div class="language-erlang highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">-</span><span class="ni">module</span><span class="p">(</span><span class="n">router</span><span class="p">).</span>
+<span class="p">-</span><span class="ni">behaviour</span><span class="p">(</span><span class="n">gen_server</span><span class="p">).</span>
+
+<span class="p">-</span><span class="ni">export</span><span class="p">([</span><span class="n">start_link</span><span class="o">/</span><span class="mi">0</span><span class="p">]).</span>
+<span class="p">-</span><span class="ni">export</span><span class="p">([</span><span class="n">init</span><span class="o">/</span><span class="mi">1</span><span class="p">,</span> <span class="n">handle_call</span><span class="o">/</span><span class="mi">3</span><span class="p">,</span> <span class="n">handle_cast</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span> <span class="n">handle_info</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span>
+     <span class="n">terminate</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span> <span class="n">code_change</span><span class="o">/</span><span class="mi">3</span><span class="p">]).</span>
+
+<span class="p">-</span><span class="ni">export</span><span class="p">([</span><span class="nb">send</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span> <span class="n">login</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span> <span class="n">logout</span><span class="o">/</span><span class="mi">1</span><span class="p">]).</span>
+
+<span class="p">-</span><span class="ni">define</span><span class="p">(</span><span class="no">SERVER</span><span class="p">,</span> <span class="nn">global</span><span class="p">:</span><span class="nf">whereis_name</span><span class="p">(</span><span class="o">?</span><span class="nv">MODULE</span><span class="p">)).</span>
+
+<span class="c">% will hold bidirectional mapping between id &lt;--&gt; pid
+</span><span class="p">-</span><span class="ni">record</span><span class="p">(</span><span class="nl">state</span><span class="p">,</span> <span class="p">{</span><span class="n">pid2id</span><span class="p">,</span> <span class="n">id2pid</span><span class="p">}).</span>
+
+<span class="nf">start_link</span><span class="p">()</span> <span class="o">-&gt;</span>
+    <span class="nn">gen_server</span><span class="p">:</span><span class="nf">start_link</span><span class="p">({</span><span class="n">global</span><span class="p">,</span> <span class="o">?</span><span class="nv">MODULE</span><span class="p">},</span> <span class="o">?</span><span class="nv">MODULE</span><span class="p">,</span> <span class="p">[],</span> <span class="p">[]).</span>
+
+<span class="c">% sends Msg to anyone subscribed to Id
+</span><span class="nb">send</span><span class="p">(</span><span class="nv">Id</span><span class="p">,</span> <span class="nv">Msg</span><span class="p">)</span> <span class="o">-&gt;</span>
+    <span class="nn">gen_server</span><span class="p">:</span><span class="nf">call</span><span class="p">(</span><span class="o">?</span><span class="nv">SERVER</span><span class="p">,</span> <span class="p">{</span><span class="nb">send</span><span class="p">,</span> <span class="nv">Id</span><span class="p">,</span> <span class="nv">Msg</span><span class="p">}).</span>
+
+<span class="nf">login</span><span class="p">(</span><span class="nv">Id</span><span class="p">,</span> <span class="nv">Pid</span><span class="p">)</span> <span class="k">when</span> <span class="nb">is_pid</span><span class="p">(</span><span class="nv">Pid</span><span class="p">)</span> <span class="o">-&gt;</span>
+    <span class="nn">gen_server</span><span class="p">:</span><span class="nf">call</span><span class="p">(</span><span class="o">?</span><span class="nv">SERVER</span><span class="p">,</span> <span class="p">{</span><span class="n">login</span><span class="p">,</span> <span class="nv">Id</span><span class="p">,</span> <span class="nv">Pid</span><span class="p">}).</span>
+
+<span class="nf">logout</span><span class="p">(</span><span class="nv">Pid</span><span class="p">)</span> <span class="k">when</span> <span class="nb">is_pid</span><span class="p">(</span><span class="nv">Pid</span><span class="p">)</span> <span class="o">-&gt;</span>
+    <span class="nn">gen_server</span><span class="p">:</span><span class="nf">call</span><span class="p">(</span><span class="o">?</span><span class="nv">SERVER</span><span class="p">,</span> <span class="p">{</span><span class="n">logout</span><span class="p">,</span> <span class="nv">Pid</span><span class="p">}).</span>
+
+<span class="c">%%
+</span>
+<span class="nf">init</span><span class="p">([])</span> <span class="o">-&gt;</span>
+    <span class="c">% set this so we can catch death of logged in pids:
+</span>    <span class="nb">process_flag</span><span class="p">(</span><span class="n">trap_exit</span><span class="p">,</span> <span class="n">true</span><span class="p">),</span>
+    <span class="c">% use ets for routing tables
+</span>    <span class="p">{</span><span class="n">ok</span><span class="p">,</span> <span class="nl">#state</span><span class="p">{</span>
+                <span class="n">pid2id</span> <span class="o">=</span> <span class="nn">ets</span><span class="p">:</span><span class="nf">new</span><span class="p">(</span><span class="o">?</span><span class="nv">MODULE</span><span class="p">,</span> <span class="p">[</span><span class="n">bag</span><span class="p">]),</span>
+                <span class="n">id2pid</span> <span class="o">=</span> <span class="nn">ets</span><span class="p">:</span><span class="nf">new</span><span class="p">(</span><span class="o">?</span><span class="nv">MODULE</span><span class="p">,</span> <span class="p">[</span><span class="n">bag</span><span class="p">])</span>
+               <span class="p">}</span>
+    <span class="p">}.</span>
+
+<span class="nf">handle_call</span><span class="p">({</span><span class="n">login</span><span class="p">,</span> <span class="nv">Id</span><span class="p">,</span> <span class="nv">Pid</span><span class="p">},</span> <span class="p">_</span><span class="nv">From</span><span class="p">,</span> <span class="nv">State</span><span class="p">)</span> <span class="k">when</span> <span class="nb">is_pid</span><span class="p">(</span><span class="nv">Pid</span><span class="p">)</span> <span class="o">-&gt;</span>
+    <span class="nn">ets</span><span class="p">:</span><span class="nf">insert</span><span class="p">(</span><span class="nv">State</span><span class="nl">#state.pid2id</span><span class="p">,</span> <span class="p">{</span><span class="nv">Pid</span><span class="p">,</span> <span class="nv">Id</span><span class="p">}),</span>
+    <span class="nn">ets</span><span class="p">:</span><span class="nf">insert</span><span class="p">(</span><span class="nv">State</span><span class="nl">#state.id2pid</span><span class="p">,</span> <span class="p">{</span><span class="nv">Id</span><span class="p">,</span> <span class="nv">Pid</span><span class="p">}),</span>
+    <span class="nb">link</span><span class="p">(</span><span class="nv">Pid</span><span class="p">),</span> <span class="c">% tell us if they exit, so we can log them out
+</span>    <span class="c">%io:format("~w logged in as ~w\n",[Pid, Id]),
+</span>    <span class="p">{</span><span class="n">reply</span><span class="p">,</span> <span class="n">ok</span><span class="p">,</span> <span class="nv">State</span><span class="p">};</span>
+
+<span class="nf">handle_call</span><span class="p">({</span><span class="n">logout</span><span class="p">,</span> <span class="nv">Pid</span><span class="p">},</span> <span class="p">_</span><span class="nv">From</span><span class="p">,</span> <span class="nv">State</span><span class="p">)</span> <span class="k">when</span> <span class="nb">is_pid</span><span class="p">(</span><span class="nv">Pid</span><span class="p">)</span> <span class="o">-&gt;</span>
+    <span class="nb">unlink</span><span class="p">(</span><span class="nv">Pid</span><span class="p">),</span>
+    <span class="nv">PidRows</span> <span class="o">=</span> <span class="nn">ets</span><span class="p">:</span><span class="nf">lookup</span><span class="p">(</span><span class="nv">State</span><span class="nl">#state.pid2id</span><span class="p">,</span> <span class="nv">Pid</span><span class="p">),</span>
+    <span class="k">case</span> <span class="nv">PidRows</span> <span class="k">of</span>
+        <span class="p">[]</span> <span class="o">-&gt;</span>
+            <span class="n">ok</span><span class="p">;</span>
+        <span class="p">_</span> <span class="o">-&gt;</span>
+            <span class="nv">IdRows</span> <span class="o">=</span> <span class="p">[</span> <span class="p">{</span><span class="nv">I</span><span class="p">,</span><span class="nv">P</span><span class="p">}</span> <span class="p">||</span> <span class="p">{</span><span class="nv">P</span><span class="p">,</span><span class="nv">I</span><span class="p">}</span> <span class="o">&lt;-</span> <span class="nv">PidRows</span> <span class="p">],</span> <span class="c">% invert tuples
+</span>            <span class="nn">ets</span><span class="p">:</span><span class="nf">delete</span><span class="p">(</span><span class="nv">State</span><span class="nl">#state.pid2id</span><span class="p">,</span> <span class="nv">Pid</span><span class="p">),</span>   <span class="c">% delete all pid-&gt;id entries
+</span>            <span class="p">[</span> <span class="nn">ets</span><span class="p">:</span><span class="nf">delete_object</span><span class="p">(</span><span class="nv">State</span><span class="nl">#state.id2pid</span><span class="p">,</span> <span class="nv">Obj</span><span class="p">)</span> <span class="p">||</span> <span class="nv">Obj</span> <span class="o">&lt;-</span> <span class="nv">IdRows</span> <span class="p">]</span> <span class="c">% and all id-&gt;pid
+</span>    <span class="k">end</span><span class="p">,</span>
+    <span class="c">%io:format("pid ~w logged out\n",[Pid]),
+</span>    <span class="p">{</span><span class="n">reply</span><span class="p">,</span> <span class="n">ok</span><span class="p">,</span> <span class="nv">State</span><span class="p">};</span>
+
+<span class="nf">handle_call</span><span class="p">({</span><span class="nb">send</span><span class="p">,</span> <span class="nv">Id</span><span class="p">,</span> <span class="nv">Msg</span><span class="p">},</span> <span class="nv">From</span><span class="p">,</span> <span class="nv">State</span><span class="p">)</span> <span class="o">-&gt;</span>
+    <span class="nv">F</span> <span class="o">=</span> <span class="k">fun</span><span class="p">()</span> <span class="o">-&gt;</span>
+        <span class="c">% get users who are subscribed to Id:
+</span>        <span class="nv">Users</span> <span class="o">=</span> <span class="nn">subsmanager</span><span class="p">:</span><span class="nf">get_subscribers</span><span class="p">(</span><span class="nv">Id</span><span class="p">),</span>
+        <span class="nn">io</span><span class="p">:</span><span class="nf">format</span><span class="p">(</span><span class="s">"Subscribers of </span><span class="si">~w</span><span class="s"> = </span><span class="si">~w</span><span class="se">\n</span><span class="s">"</span><span class="p">,[</span><span class="nv">Id</span><span class="p">,</span> <span class="nv">Users</span><span class="p">]),</span>
+        <span class="c">% get pids of anyone logged in from Users list:
+</span>        <span class="nv">Pids0</span> <span class="o">=</span> <span class="nn">lists</span><span class="p">:</span><span class="nf">map</span><span class="p">(</span>
+            <span class="k">fun</span><span class="p">(</span><span class="nv">U</span><span class="p">)</span><span class="o">-&gt;</span>
+                <span class="p">[</span> <span class="nv">P</span> <span class="p">||</span> <span class="p">{</span> <span class="p">_</span><span class="nv">I</span><span class="p">,</span> <span class="nv">P</span> <span class="p">}</span> <span class="o">&lt;-</span> <span class="nn">ets</span><span class="p">:</span><span class="nf">lookup</span><span class="p">(</span><span class="nv">State</span><span class="nl">#state.id2pid</span><span class="p">,</span> <span class="nv">U</span><span class="p">)</span> <span class="p">]</span>
+            <span class="k">end</span><span class="p">,</span>
+            <span class="p">[</span> <span class="nv">Id</span> <span class="p">|</span> <span class="nv">Users</span> <span class="p">]</span> <span class="c">% we are always subscribed to ourselves
+</span>        <span class="p">),</span>
+        <span class="nv">Pids</span> <span class="o">=</span> <span class="nn">lists</span><span class="p">:</span><span class="nf">flatten</span><span class="p">(</span><span class="nv">Pids0</span><span class="p">),</span>
+        <span class="nn">io</span><span class="p">:</span><span class="nf">format</span><span class="p">(</span><span class="s">"Pids: </span><span class="si">~w</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span> <span class="p">[</span><span class="nv">Pids</span><span class="p">]),</span>
+        <span class="c">% send Msg to them all
+</span>        <span class="nv">M</span> <span class="o">=</span> <span class="p">{</span><span class="n">router_msg</span><span class="p">,</span> <span class="nv">Msg</span><span class="p">},</span>
+        <span class="p">[</span> <span class="nv">Pid</span> <span class="o">!</span> <span class="nv">M</span> <span class="p">||</span> <span class="nv">Pid</span> <span class="o">&lt;-</span> <span class="nv">Pids</span> <span class="p">],</span>
+        <span class="c">% respond with how many users saw the message
+</span>        <span class="nn">gen_server</span><span class="p">:</span><span class="nf">reply</span><span class="p">(</span><span class="nv">From</span><span class="p">,</span> <span class="p">{</span><span class="n">ok</span><span class="p">,</span> <span class="nb">length</span><span class="p">(</span><span class="nv">Pids</span><span class="p">)})</span>
+    <span class="k">end</span><span class="p">,</span>
+    <span class="nb">spawn</span><span class="p">(</span><span class="nv">F</span><span class="p">),</span>
+    <span class="p">{</span><span class="n">noreply</span><span class="p">,</span> <span class="nv">State</span><span class="p">}.</span>
+
+<span class="c">% handle death and cleanup of logged in processes
+</span><span class="nf">handle_info</span><span class="p">(</span><span class="nv">Info</span><span class="p">,</span> <span class="nv">State</span><span class="p">)</span> <span class="o">-&gt;</span>
+    <span class="k">case</span> <span class="nv">Info</span> <span class="k">of</span>
+        <span class="p">{</span><span class="n">'EXIT'</span><span class="p">,</span> <span class="nv">Pid</span><span class="p">,</span> <span class="p">_</span><span class="nv">Why</span><span class="p">}</span> <span class="o">-&gt;</span>
+            <span class="nf">handle_call</span><span class="p">({</span><span class="n">logout</span><span class="p">,</span> <span class="nv">Pid</span><span class="p">},</span> <span class="n">blah</span><span class="p">,</span> <span class="nv">State</span><span class="p">);</span>
+        <span class="nv">Wtf</span> <span class="o">-&gt;</span>
+            <span class="nn">io</span><span class="p">:</span><span class="nf">format</span><span class="p">(</span><span class="s">"Caught unhandled message: </span><span class="si">~w</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span> <span class="p">[</span><span class="nv">Wtf</span><span class="p">])</span>
+    <span class="k">end</span><span class="p">,</span>
+    <span class="p">{</span><span class="n">noreply</span><span class="p">,</span> <span class="nv">State</span><span class="p">}.</span>
+
+<span class="nf">handle_cast</span><span class="p">(_</span><span class="nv">Msg</span><span class="p">,</span> <span class="nv">State</span><span class="p">)</span> <span class="o">-&gt;</span>
+    <span class="p">{</span><span class="n">noreply</span><span class="p">,</span> <span class="nv">State</span><span class="p">}.</span>
+<span class="nf">terminate</span><span class="p">(_</span><span class="nv">Reason</span><span class="p">,</span> <span class="p">_</span><span class="nv">State</span><span class="p">)</span> <span class="o">-&gt;</span>
+    <span class="n">ok</span><span class="p">.</span>
+<span class="nf">code_change</span><span class="p">(_</span><span class="nv">OldVsn</span><span class="p">,</span> <span class="nv">State</span><span class="p">,</span> <span class="p">_</span><span class="nv">Extra</span><span class="p">)</span> <span class="o">-&gt;</span>
+    <span class="p">{</span><span class="n">ok</span><span class="p">,</span> <span class="nv">State</span><span class="p">}.</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<p>And here’s a quick test that doesn’t require mochiweb - I’ve used atoms instead of user ids, and omitted some output for clarity:</p>
+
+<pre>
+(subsman@localhost)1&gt; c(subsmanager), c(router), rr("subsmanager.erl").
+(subsman@localhost)2&gt; subsmanager:start_link().
+(subsman@localhost)3&gt; router:start_link().
+(subsman@localhost)4&gt; Subs = [#subscription{subscriber=alice, subscribee=rj}, #subscription{subscriber=bob, subscribee=rj}].
+[#subscription{subscriber = alice,subscribee = rj},
+#subscription{subscriber = bob,subscribee = rj}]
+(subsman@localhost)5&gt; subsmanager:add_subscriptions(Subs).
+ok
+(subsman@localhost)6&gt; router:send(rj, "RJ did something").
+Subscribers of rj = [bob,alice]
+Pids: []
+{ok,0}
+(subsman@localhost)7&gt; router:login(alice, self()).
+ok
+(subsman@localhost)8&gt; router:send(rj, "RJ did something").
+Subscribers of rj = [bob,alice]
+Pids: [&lt;0.46.0&gt;]
+{ok,1}
+(subsman@localhost)9&gt; receive {router_msg, M} -&gt; io:format("~s\n",[M]) end.
+RJ did something
+ok
+</pre>
+
+<p>This shows how alice can a receive a message when the subject is someone she is subscribed to (rj), even though the message wasn’t sent directly to alice. The output shows that the router identified possible targets as <code>[alice,bob]</code> but only delivered the message to one person, alice, because bob was not logged in.</p>
+
+<h2 id="generating-a-typical-social-network-friends-dataset">Generating a typical social-network friends dataset</h2>
+
+<p>We could generate lots of friend relationships at random, but that’s not particularly realistic. Social networks tend to exhibit a power law distribution. Social networks usually have a few super-popular users (<a href="http://twitter.com/barackobama">some Twitter users</a> have over 100,000 followers) and plenty of people with just a handful of friends. The Last.fm friends data is typical - it fits a <a href="http://en.wikipedia.org/wiki/Barab%C3%A1si-Albert_model">Barabási–Albert graph model</a>, so that’s what I’ll use.</p>
+
+<p>To generate the dataset I’m using the python module from the excellent <a href="http://cneurocvs.rmki.kfki.hu/igraph/">igraph library</a>:</p>
+
+<p>fakefriends.py:</p>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="nn">igraph</span>
+<span class="n">g</span> <span class="o">=</span> <span class="n">igraph</span><span class="p">.</span><span class="n">Graph</span><span class="p">.</span><span class="n">Barabasi</span><span class="p">(</span><span class="mi">1000000</span><span class="p">,</span> <span class="mi">15</span><span class="p">,</span> <span class="n">directed</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+<span class="k">print</span> <span class="s">"Edges: "</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">g</span><span class="p">.</span><span class="n">ecount</span><span class="p">())</span> <span class="o">+</span> <span class="s">" Verticies: "</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">g</span><span class="p">.</span><span class="n">vcount</span><span class="p">())</span>
+<span class="n">g</span><span class="p">.</span><span class="n">write_edgelist</span><span class="p">(</span><span class="s">"fakefriends.txt"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>This will generate with 2 user ids per line, space separated. These are the friend relationships we’ll load into our subsmanager. User ids range from 1 to a million.</p>
+
+<h2 id="bulk-loading-friends-data-into-mnesia">Bulk loading friends data into mnesia</h2>
+
+<p>This small module will read the fakefriends.txt file and create a list of subscription records.</p>
+
+<p>readfriends.erl - to read the fakefriends.txt and create subscription records:</p>
+<div class="language-erlang highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">-</span><span class="ni">module</span><span class="p">(</span><span class="n">readfriends</span><span class="p">).</span>
+<span class="p">-</span><span class="ni">export</span><span class="p">([</span><span class="n">load</span><span class="o">/</span><span class="mi">1</span><span class="p">]).</span>
+<span class="p">-</span><span class="ni">record</span><span class="p">(</span><span class="nl">subscription</span><span class="p">,</span> <span class="p">{</span><span class="n">subscriber</span><span class="p">,</span> <span class="n">subscribee</span><span class="p">}).</span>
+
+<span class="nf">load</span><span class="p">(</span><span class="nv">Filename</span><span class="p">)</span> <span class="o">-&gt;</span>
+    <span class="nf">for_each_line_in_file</span><span class="p">(</span><span class="nv">Filename</span><span class="p">,</span>
+        <span class="k">fun</span><span class="p">(</span><span class="nv">Line</span><span class="p">,</span> <span class="nv">Acc</span><span class="p">)</span> <span class="o">-&gt;</span>
+            <span class="p">[</span><span class="nv">As</span><span class="p">,</span> <span class="nv">Bs</span><span class="p">]</span> <span class="o">=</span> <span class="nn">string</span><span class="p">:</span><span class="nf">tokens</span><span class="p">(</span><span class="nn">string</span><span class="p">:</span><span class="nf">strip</span><span class="p">(</span><span class="nv">Line</span><span class="p">,</span> <span class="n">right</span><span class="p">,</span> <span class="sc">$\n</span><span class="p">),</span> <span class="s">" "</span><span class="p">),</span>
+            <span class="p">{</span><span class="nv">A</span><span class="p">,</span> <span class="p">_}</span> <span class="o">=</span> <span class="nn">string</span><span class="p">:</span><span class="nf">to_integer</span><span class="p">(</span><span class="nv">As</span><span class="p">),</span>
+            <span class="p">{</span><span class="nv">B</span><span class="p">,</span> <span class="p">_}</span> <span class="o">=</span> <span class="nn">string</span><span class="p">:</span><span class="nf">to_integer</span><span class="p">(</span><span class="nv">Bs</span><span class="p">),</span>
+            <span class="p">[</span> <span class="nl">#subscription</span><span class="p">{</span><span class="n">subscriber</span><span class="o">=</span><span class="nv">A</span><span class="p">,</span> <span class="n">subscribee</span><span class="o">=</span><span class="nv">B</span><span class="p">}</span> <span class="p">|</span> <span class="nv">Acc</span> <span class="p">]</span>
+        <span class="k">end</span><span class="p">,</span> <span class="p">[</span><span class="n">read</span><span class="p">],</span> <span class="p">[]).</span>
+
+<span class="c">% via: http://www.trapexit.org/Reading_Lines_from_a_File
+</span><span class="nf">for_each_line_in_file</span><span class="p">(</span><span class="nv">Name</span><span class="p">,</span> <span class="nv">Proc</span><span class="p">,</span> <span class="nv">Mode</span><span class="p">,</span> <span class="nv">Accum0</span><span class="p">)</span> <span class="o">-&gt;</span>
+    <span class="p">{</span><span class="n">ok</span><span class="p">,</span> <span class="nv">Device</span><span class="p">}</span> <span class="o">=</span> <span class="nn">file</span><span class="p">:</span><span class="nf">open</span><span class="p">(</span><span class="nv">Name</span><span class="p">,</span> <span class="nv">Mode</span><span class="p">),</span>
+    <span class="nf">for_each_line</span><span class="p">(</span><span class="nv">Device</span><span class="p">,</span> <span class="nv">Proc</span><span class="p">,</span> <span class="nv">Accum0</span><span class="p">).</span>
+
+<span class="nf">for_each_line</span><span class="p">(</span><span class="nv">Device</span><span class="p">,</span> <span class="nv">Proc</span><span class="p">,</span> <span class="nv">Accum</span><span class="p">)</span> <span class="o">-&gt;</span>
+    <span class="k">case</span> <span class="nn">io</span><span class="p">:</span><span class="nf">get_line</span><span class="p">(</span><span class="nv">Device</span><span class="p">,</span> <span class="s">""</span><span class="p">)</span> <span class="k">of</span>
+        <span class="n">eof</span>  <span class="o">-&gt;</span> <span class="nn">file</span><span class="p">:</span><span class="nf">close</span><span class="p">(</span><span class="nv">Device</span><span class="p">),</span> <span class="nv">Accum</span><span class="p">;</span>
+        <span class="nv">Line</span> <span class="o">-&gt;</span> <span class="nv">NewAccum</span> <span class="o">=</span> <span class="nv">Proc</span><span class="p">(</span><span class="nv">Line</span><span class="p">,</span> <span class="nv">Accum</span><span class="p">),</span>
+                    <span class="nf">for_each_line</span><span class="p">(</span><span class="nv">Device</span><span class="p">,</span> <span class="nv">Proc</span><span class="p">,</span> <span class="nv">NewAccum</span><span class="p">)</span>
+    <span class="k">end</span><span class="p">.</span>
+</code></pre></div></div>
+
+<p>Now in the subsmanager shell, you can read from the text file and add the subscriptions:</p>
+
+<div class="language-console highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="gp">$</span><span class="w"> </span>erl <span class="nt">-name</span> router@minifeeds4.gs2 +K <span class="nb">true</span> +A 128 <span class="nt">-setcookie</span> secretcookie <span class="nt">-mnesia</span> dump_log_write_threshold 50000 <span class="nt">-mnesia</span> dc_dump_limit 40
+<span class="gp">erl&gt;</span><span class="w"> </span>c<span class="o">(</span>readfriends<span class="o">)</span>, c<span class="o">(</span>subsmanager<span class="o">)</span><span class="nb">.</span>
+<span class="gp">erl&gt;</span><span class="w"> </span>subsmanager:first_run<span class="o">()</span><span class="nb">.</span>
+<span class="gp">erl&gt;</span><span class="w"> </span>subsmanager:start_link<span class="o">()</span><span class="nb">.</span>
+<span class="gp">erl&gt;</span><span class="w"> </span>subsmanager:add_subscriptions<span class="o">(</span> readfriends:load<span class="o">(</span><span class="s2">"fakefriends.txt"</span><span class="o">)</span> <span class="o">)</span><span class="nb">.</span>
+</code></pre></div></div>
+
+<p>Note the additional mnesia parameters - these are to avoid the <b>** WARNING ** Mnesia is overloaded</b> messages you would (probably) otherwise see. Refer to my previous post: <a href="http://www.metabrew.com/article/on-bulk-loading-data-into-mnesia/">On bulk loading data into Mnesia</a> for alternative ways to load in lots of data. The best solution seems to be (as pointed out in the comments, thanks Jacob!) to set those options. The <a href="http://www.erlang.org/doc/apps/mnesia/">Mnesia reference manual</a> contains many other settings under Configuration Parameters, and is worth a look.</p>
+
+<h2 id="turning-it-up-to-1-million">Turning it up to 1 Million</h2>
+
+<p>Creating a million tcp connections from one host is non-trivial. I’ve a feeling that people who do this regularly have small clusters dedicated to simulating lots of client connections, probably running a real tool like Tsung. Even with the tuning from <a href="http://www.metabrew.com/article/a-million-user-comet-application-with-mochiweb-part-1/">Part 1</a> to increase kernel tcp memory, increase the file descriptor ulimits and set the local port range to the maximum, we will still hit a hard limit on ephemeral ports.</p>
+
+<p>When making a tcp connection, the client end is allocated (or you can specify) a port from the range in <code>/proc/sys/net/ipv4/ip_local_port_range</code>. It doesn’t matter if you specify it manually, or use an ephemeral port, you’re still going to run out.</p>
+
+<p>In Part 1, we set the range to “1024 65535” - meaning there are 65535-1024 = 64511 unprivileged ports available. Some of them will be used by other processes, but we’ll never get over 64511 client connections, because we’ll run out of ports.</p>
+
+<p>The local port range is assigned per-IP, so if we make our outgoing connections specifically from a range of different local IP addresses, we’ll be able to open more than 64511 outgoing connections in total.</p>
+
+<p>So let’s bring up 17 new IP addresses, with the intention of making 62,000 connections from each - giving us a total of 1,054,000 connections:</p>
+
+<div class="language-console highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="gp">$</span><span class="w"> </span><span class="k">for </span>i <span class="k">in</span> <span class="sb">`</span><span class="nb">seq </span>1 17<span class="sb">`</span><span class="p">;</span> <span class="k">do </span><span class="nb">echo sudo </span>ifconfig eth0:<span class="nv">$i</span> 10.0.0.<span class="nv">$i</span> up <span class="p">;</span> <span class="k">done</span>
+</code></pre></div></div>
+
+<p>If you run <code>ifconfig</code> now you should see your virtual interfaces: eth0:1, eth0:2 … eth0:17, each with a different IP address. Obviously you should chose a sensible part of whatever address space you are using.</p>
+
+<p>All that remains now is to modify the <code>floodtest</code> tool from Part 1 to specify the local IP it should connect from… Unfortunately the <a href="http://www.erlang.org/doc/man/http.html">erlang http client</a> doesn’t let you specify the source IP. Neither does ibrowse, the alternative http client library. Damn.</p>
+
+<blockquote>
+  <p><em>Crazy Idea..</em>
+At this point I considered another option: bringing up 17 pairs of IPs - one on the server and one on the client - each pair in their own isolated /30 subnet. I think that if I then made the client connect to any given server IP, it would force the local address to be other half of the pair on that subnet, because only one of the local IPs would actually be able to reach the server IP. In theory, this would mean declaring the local source IP on the client machine would not be necessary (although the range of server IPs would need to be specified). I don’t know if this would really work - it sounded plausible at the time. In the end I decided it was too perverted and didn’t try it.</p>
+</blockquote>
+
+<p>I also poked around in OTP’s <code>http_transport</code> code and considered adding support for specifying the local IP. It’s not really a feature you usually need in an HTTP client though, and it would certainly have been more work.</p>
+
+<p>Note: <code>gen_tcp</code> lets you specify the source address, so I ended up writing a rather crude client using <code>gen_tcp</code> specifically for this test:</p>
+
+<p>floodtest2.erl</p>
+
+<div class="language-erlang highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">-</span><span class="ni">module</span><span class="p">(</span><span class="n">floodtest2</span><span class="p">).</span>
+<span class="p">-</span><span class="ni">compile</span><span class="p">(</span><span class="n">export_all</span><span class="p">).</span>
+<span class="p">-</span><span class="ni">define</span><span class="p">(</span><span class="no">SERVERADDR</span><span class="p">,</span> <span class="s">"10.1.2.3"</span><span class="p">).</span> <span class="c">% where mochiweb is running
+</span><span class="p">-</span><span class="ni">define</span><span class="p">(</span><span class="no">SERVERPORT</span><span class="p">,</span> <span class="mi">8000</span><span class="p">).</span>
+
+<span class="c">% Generate the config in bash like so (chose some available address space):
+% EACH=62000; for i in `seq 1 17`; do echo "{ {10,0,0,$i}, $((($i-1)*$EACH+1)), $(($i*$EACH)) }, "; done
+</span>
+<span class="nf">run</span><span class="p">(</span><span class="nv">Interval</span><span class="p">)</span> <span class="o">-&gt;</span>
+        <span class="nv">Config</span> <span class="o">=</span> <span class="p">[</span>
+<span class="p">{</span> <span class="p">{</span><span class="mi">10</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">},</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">62000</span><span class="p">},</span>
+<span class="p">{</span> <span class="p">{</span><span class="mi">10</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">2</span><span class="p">},</span> <span class="mi">62001</span><span class="p">,</span> <span class="mi">124000</span><span class="p">},</span>
+<span class="p">{</span> <span class="p">{</span><span class="mi">10</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">3</span><span class="p">},</span> <span class="mi">124001</span><span class="p">,</span> <span class="mi">186000</span><span class="p">},</span>
+<span class="p">{</span> <span class="p">{</span><span class="mi">10</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">4</span><span class="p">},</span> <span class="mi">186001</span><span class="p">,</span> <span class="mi">248000</span><span class="p">},</span>
+<span class="p">{</span> <span class="p">{</span><span class="mi">10</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">5</span><span class="p">},</span> <span class="mi">248001</span><span class="p">,</span> <span class="mi">310000</span><span class="p">},</span>
+<span class="p">{</span> <span class="p">{</span><span class="mi">10</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">6</span><span class="p">},</span> <span class="mi">310001</span><span class="p">,</span> <span class="mi">372000</span><span class="p">},</span>
+<span class="p">{</span> <span class="p">{</span><span class="mi">10</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">7</span><span class="p">},</span> <span class="mi">372001</span><span class="p">,</span> <span class="mi">434000</span><span class="p">},</span>
+<span class="p">{</span> <span class="p">{</span><span class="mi">10</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">8</span><span class="p">},</span> <span class="mi">434001</span><span class="p">,</span> <span class="mi">496000</span><span class="p">},</span>
+<span class="p">{</span> <span class="p">{</span><span class="mi">10</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">9</span><span class="p">},</span> <span class="mi">496001</span><span class="p">,</span> <span class="mi">558000</span><span class="p">},</span>
+<span class="p">{</span> <span class="p">{</span><span class="mi">10</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">10</span><span class="p">},</span> <span class="mi">558001</span><span class="p">,</span> <span class="mi">620000</span><span class="p">},</span>
+<span class="p">{</span> <span class="p">{</span><span class="mi">10</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">11</span><span class="p">},</span> <span class="mi">620001</span><span class="p">,</span> <span class="mi">682000</span><span class="p">},</span>
+<span class="p">{</span> <span class="p">{</span><span class="mi">10</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">12</span><span class="p">},</span> <span class="mi">682001</span><span class="p">,</span> <span class="mi">744000</span><span class="p">},</span>
+<span class="p">{</span> <span class="p">{</span><span class="mi">10</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">13</span><span class="p">},</span> <span class="mi">744001</span><span class="p">,</span> <span class="mi">806000</span><span class="p">},</span>
+<span class="p">{</span> <span class="p">{</span><span class="mi">10</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">14</span><span class="p">},</span> <span class="mi">806001</span><span class="p">,</span> <span class="mi">868000</span><span class="p">},</span>
+<span class="p">{</span> <span class="p">{</span><span class="mi">10</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">15</span><span class="p">},</span> <span class="mi">868001</span><span class="p">,</span> <span class="mi">930000</span><span class="p">},</span>
+<span class="p">{</span> <span class="p">{</span><span class="mi">10</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">16</span><span class="p">},</span> <span class="mi">930001</span><span class="p">,</span> <span class="mi">992000</span><span class="p">},</span>
+<span class="p">{</span> <span class="p">{</span><span class="mi">10</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">17</span><span class="p">},</span> <span class="mi">992001</span><span class="p">,</span> <span class="mi">1054000</span><span class="p">}],</span>
+        <span class="nf">start</span><span class="p">(</span><span class="nv">Config</span><span class="p">,</span> <span class="nv">Interval</span><span class="p">).</span>
+
+<span class="nf">start</span><span class="p">(</span><span class="nv">Config</span><span class="p">,</span> <span class="nv">Interval</span><span class="p">)</span> <span class="o">-&gt;</span>
+        <span class="nv">Monitor</span> <span class="o">=</span> <span class="nb">monitor</span><span class="p">(),</span>
+        <span class="nv">AdjustedInterval</span> <span class="o">=</span> <span class="nv">Interval</span> <span class="o">/</span> <span class="nb">length</span><span class="p">(</span><span class="nv">Config</span><span class="p">),</span>
+        <span class="p">[</span> <span class="nb">spawn</span><span class="p">(</span><span class="k">fun</span> <span class="n">start</span><span class="o">/</span><span class="mi">5</span><span class="p">,</span> <span class="p">[</span><span class="nv">Lower</span><span class="p">,</span> <span class="nv">Upper</span><span class="p">,</span> <span class="nv">Ip</span><span class="p">,</span> <span class="nv">AdjustedInterval</span><span class="p">,</span> <span class="nv">Monitor</span><span class="p">])</span>
+          <span class="p">||</span> <span class="p">{</span><span class="nv">Ip</span><span class="p">,</span> <span class="nv">Lower</span><span class="p">,</span> <span class="nv">Upper</span><span class="p">}</span>  <span class="o">&lt;-</span> <span class="nv">Config</span> <span class="p">],</span>
+        <span class="n">ok</span><span class="p">.</span>
+
+<span class="nf">start</span><span class="p">(</span><span class="nv">LowerID</span><span class="p">,</span> <span class="nv">UpperID</span><span class="p">,</span> <span class="p">_,</span> <span class="p">_,</span> <span class="p">_)</span> <span class="k">when</span> <span class="nv">LowerID</span> <span class="o">==</span> <span class="nv">UpperID</span> <span class="o">-&gt;</span> <span class="n">done</span><span class="p">;</span>
+<span class="nf">start</span><span class="p">(</span><span class="nv">LowerID</span><span class="p">,</span> <span class="nv">UpperID</span><span class="p">,</span> <span class="nv">LocalIP</span><span class="p">,</span> <span class="nv">Interval</span><span class="p">,</span> <span class="nv">Monitor</span><span class="p">)</span> <span class="o">-&gt;</span>
+        <span class="nb">spawn</span><span class="p">(</span><span class="k">fun</span> <span class="n">connect</span><span class="o">/</span><span class="mi">5</span><span class="p">,</span> <span class="p">[</span><span class="o">?</span><span class="nv">SERVERADDR</span><span class="p">,</span> <span class="o">?</span><span class="nv">SERVERPORT</span><span class="p">,</span> <span class="nv">LocalIP</span><span class="p">,</span> <span class="s">"/test/"</span><span class="o">++</span><span class="nv">LowerID</span><span class="p">,</span> <span class="nv">Monitor</span><span class="p">]),</span>
+        <span class="k">receive</span> <span class="k">after</span> <span class="nv">Interval</span> <span class="o">-&gt;</span> <span class="nf">start</span><span class="p">(</span><span class="nv">LowerID</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="nv">UpperID</span><span class="p">,</span> <span class="nv">LocalIP</span><span class="p">,</span> <span class="nv">Interval</span><span class="p">,</span> <span class="nv">Monitor</span><span class="p">)</span> <span class="k">end</span><span class="p">.</span>
+
+<span class="nf">connect</span><span class="p">(</span><span class="nv">ServerAddr</span><span class="p">,</span> <span class="nv">ServerPort</span><span class="p">,</span> <span class="nv">ClientIP</span><span class="p">,</span> <span class="nv">Path</span><span class="p">,</span> <span class="nv">Monitor</span><span class="p">)</span> <span class="o">-&gt;</span>
+        <span class="nv">Opts</span> <span class="o">=</span> <span class="p">[</span><span class="n">binary</span><span class="p">,</span> <span class="p">{</span><span class="n">packet</span><span class="p">,</span> <span class="mi">0</span><span class="p">},</span> <span class="p">{</span><span class="n">ip</span><span class="p">,</span> <span class="nv">ClientIP</span><span class="p">},</span> <span class="p">{</span><span class="n">reuseaddr</span><span class="p">,</span> <span class="n">true</span><span class="p">},</span> <span class="p">{</span><span class="n">active</span><span class="p">,</span> <span class="n">false</span><span class="p">}],</span>
+        <span class="p">{</span><span class="n">ok</span><span class="p">,</span> <span class="nv">Sock</span><span class="p">}</span> <span class="o">=</span> <span class="nn">gen_tcp</span><span class="p">:</span><span class="nf">connect</span><span class="p">(</span><span class="nv">ServerAddr</span><span class="p">,</span> <span class="nv">ServerPort</span><span class="p">,</span> <span class="nv">Opts</span><span class="p">),</span>
+        <span class="nv">Monitor</span> <span class="o">!</span> <span class="n">open</span><span class="p">,</span>
+        <span class="nv">ReqL</span> <span class="o">=</span> <span class="nn">io_lib</span><span class="p">:</span><span class="nf">format</span><span class="p">(</span><span class="s">"GET </span><span class="si">~s</span><span class="se">\r\n</span><span class="s">Host: </span><span class="si">~s</span><span class="se">\r\n\r\n</span><span class="s">"</span><span class="p">,</span> <span class="p">[</span><span class="nv">Path</span><span class="p">,</span> <span class="nv">ServerAddr</span><span class="p">]),</span>
+        <span class="nv">Req</span> <span class="o">=</span> <span class="nb">list_to_binary</span><span class="p">(</span><span class="nv">ReqL</span><span class="p">),</span>
+        <span class="n">ok</span> <span class="o">=</span> <span class="nn">gen_tcp</span><span class="p">:</span><span class="nb">send</span><span class="p">(</span><span class="nv">Sock</span><span class="p">,</span> <span class="p">[</span><span class="nv">Req</span><span class="p">]),</span>
+        <span class="nf">do_recv</span><span class="p">(</span><span class="nv">Sock</span><span class="p">,</span> <span class="nv">Monitor</span><span class="p">),</span>
+        <span class="p">(</span><span class="k">catch</span> <span class="nn">gen_tcp</span><span class="p">:</span><span class="nf">close</span><span class="p">(</span><span class="nv">Sock</span><span class="p">)),</span>
+        <span class="n">ok</span><span class="p">.</span>
+
+<span class="nf">do_recv</span><span class="p">(</span><span class="nv">Sock</span><span class="p">,</span> <span class="nv">Monitor</span><span class="p">)</span><span class="o">-&gt;</span>
+        <span class="k">case</span> <span class="nn">gen_tcp</span><span class="p">:</span><span class="nf">recv</span><span class="p">(</span><span class="nv">Sock</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="k">of</span>
+                <span class="p">{</span><span class="n">ok</span><span class="p">,</span> <span class="nv">B</span><span class="p">}</span> <span class="o">-&gt;</span>
+                        <span class="nv">Monitor</span> <span class="o">!</span> <span class="p">{</span><span class="n">bytes</span><span class="p">,</span> <span class="nb">size</span><span class="p">(</span><span class="nv">B</span><span class="p">)},</span>
+                        <span class="nn">io</span><span class="p">:</span><span class="nf">format</span><span class="p">(</span><span class="s">"Recvd </span><span class="si">~s</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span> <span class="p">[</span> <span class="nb">binary_to_list</span><span class="p">(</span><span class="nv">B</span><span class="p">)]),</span>
+                        <span class="nn">io</span><span class="p">:</span><span class="nf">format</span><span class="p">(</span><span class="s">"Recvd </span><span class="si">~w</span><span class="s"> bytes</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span> <span class="p">[</span><span class="nb">size</span><span class="p">(</span><span class="nv">B</span><span class="p">)]),</span>
+                        <span class="nf">do_recv</span><span class="p">(</span><span class="nv">Sock</span><span class="p">,</span> <span class="nv">Monitor</span><span class="p">);</span>
+                <span class="p">{</span><span class="n">error</span><span class="p">,</span> <span class="n">closed</span><span class="p">}</span> <span class="o">-&gt;</span>
+                        <span class="nv">Monitor</span> <span class="o">!</span> <span class="n">closed</span><span class="p">,</span>
+                        <span class="n">closed</span><span class="p">;</span>
+                <span class="nv">Other</span> <span class="o">-&gt;</span>
+                        <span class="nv">Monitor</span> <span class="o">!</span> <span class="n">closed</span><span class="p">,</span>
+                        <span class="nn">io</span><span class="p">:</span><span class="nf">format</span><span class="p">(</span><span class="s">"Other:</span><span class="si">~w</span><span class="se">\n</span><span class="s">"</span><span class="p">,[</span><span class="nv">Other</span><span class="p">])</span>
+        <span class="k">end</span><span class="p">.</span>
+
+<span class="c">% Monitor process receives stats and reports how much data we received etc:
+</span><span class="nb">monitor</span><span class="p">()</span> <span class="o">-&gt;</span>
+        <span class="nv">Pid</span> <span class="o">=</span> <span class="nb">spawn</span><span class="p">(</span><span class="o">?</span><span class="nv">MODULE</span><span class="p">,</span> <span class="n">monitor0</span><span class="p">,</span> <span class="p">[{</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">}]),</span>
+        <span class="nn">timer</span><span class="p">:</span><span class="nf">send_interval</span><span class="p">(</span><span class="mi">10000</span><span class="p">,</span> <span class="nv">Pid</span><span class="p">,</span> <span class="n">report</span><span class="p">),</span>
+        <span class="nv">Pid</span><span class="p">.</span>
+
+<span class="nf">monitor0</span><span class="p">({</span><span class="nv">Open</span><span class="p">,</span> <span class="nv">Closed</span><span class="p">,</span> <span class="nv">Chunks</span><span class="p">,</span> <span class="nv">Bytes</span><span class="p">}</span><span class="o">=</span><span class="nv">S</span><span class="p">)</span> <span class="o">-&gt;</span>
+        <span class="k">receive</span>
+                <span class="n">report</span>  <span class="o">-&gt;</span> <span class="nn">io</span><span class="p">:</span><span class="nf">format</span><span class="p">(</span><span class="s">"{Open, Closed, Chunks, Bytes} = </span><span class="si">~w</span><span class="se">\n</span><span class="s">"</span><span class="p">,[</span><span class="nv">S</span><span class="p">]);</span>
+                <span class="n">open</span>    <span class="o">-&gt;</span> <span class="nf">monitor0</span><span class="p">({</span><span class="nv">Open</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="nv">Closed</span><span class="p">,</span> <span class="nv">Chunks</span><span class="p">,</span> <span class="nv">Bytes</span><span class="p">});</span>
+                <span class="n">closed</span>  <span class="o">-&gt;</span> <span class="nf">monitor0</span><span class="p">({</span><span class="nv">Open</span><span class="p">,</span> <span class="nv">Closed</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="nv">Chunks</span><span class="p">,</span> <span class="nv">Bytes</span><span class="p">});</span>
+                <span class="n">chunk</span>   <span class="o">-&gt;</span> <span class="nf">monitor0</span><span class="p">({</span><span class="nv">Open</span><span class="p">,</span> <span class="nv">Closed</span><span class="p">,</span> <span class="nv">Chunks</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="nv">Bytes</span><span class="p">});</span>
+                <span class="p">{</span><span class="n">bytes</span><span class="p">,</span> <span class="nv">B</span><span class="p">}</span> <span class="o">-&gt;</span> <span class="nf">monitor0</span><span class="p">({</span><span class="nv">Open</span><span class="p">,</span> <span class="nv">Closed</span><span class="p">,</span> <span class="nv">Chunks</span><span class="p">,</span> <span class="nv">Bytes</span> <span class="o">+</span> <span class="nv">B</span><span class="p">})</span>
+        <span class="k">end</span><span class="p">.</span>
+</code></pre></div></div>
+
+<p>As an initial test I was connecting to the mochiweb app from Part 1 - it simply sends one message to every client every 10 seconds.</p>
+
+<div class="language-console highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="gp">erl&gt;</span><span class="w"> </span>c<span class="o">(</span>floodtest2<span class="o">)</span>, floodtest2:run<span class="o">(</span>20<span class="o">)</span><span class="nb">.</span>
+</code></pre></div></div>
+
+<blockquote>
+  <p><em>This quickly ate all my memory.</em></p>
+</blockquote>
+
+<p>Turns out opening lots of connections with gen_tcp like that eats a lot of ram. I think it’d need ~36GB to make it work without any additional tuning. I’m not interested in trying to optimise my quick-hack erlang http client (in the real world, this would be 1M actual web browsers), and the only machine I could get my hands on that has more than 32GB of RAM is one of our production databases, and I can’t find a good excuse to take Last.fm offline whilst I test this :) Additionally, it seems like it still only managed to open around 64,500 ports. Hmm.</p>
+
+<p>At this point I decided to break out the trusty <a href="http://monkey.org/~provos/libevent/">libevent</a>, which I was pleased to discover has an HTTP API. Newer versions also have a <code>evhttp_connection_set_local_address</code> function in the http API. This sounds promising.</p>
+
+<p>Here’s the http client in C using libevent:</p>
+
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="cp">#include &lt;sys/types.h&gt;
+#include &lt;sys/time.h&gt;
+#include &lt;sys/queue.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;err.h&gt;
+#include &lt;event.h&gt;
+#include &lt;evhttp.h&gt;
+#include &lt;unistd.h&gt;
+#include &lt;stdio.h&gt;
+#include &lt;sys/socket.h&gt;
+#include &lt;netinet/in.h&gt;
+#include &lt;time.h&gt;
+#include &lt;pthread.h&gt;
+</span>
+<span class="cp">#define BUFSIZE 4096
+#define NUMCONNS 62000
+#define SERVERADDR "10.103.1.43"
+#define SERVERPORT 8000
+#define SLEEP_MS 10
+</span>
+<span class="kt">char</span> <span class="n">buf</span><span class="p">[</span><span class="n">BUFSIZE</span><span class="p">];</span>
+
+<span class="kt">int</span> <span class="n">bytes_recvd</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+<span class="kt">int</span> <span class="n">chunks_recvd</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+<span class="kt">int</span> <span class="n">closed</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+<span class="kt">int</span> <span class="n">connected</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+
+<span class="c1">// called per chunk received</span>
+<span class="kt">void</span> <span class="nf">chunkcb</span><span class="p">(</span><span class="k">struct</span> <span class="n">evhttp_request</span> <span class="o">*</span> <span class="n">req</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span> <span class="n">arg</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">int</span> <span class="n">s</span> <span class="o">=</span> <span class="n">evbuffer_remove</span><span class="p">(</span> <span class="n">req</span><span class="o">-&gt;</span><span class="n">input_buffer</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">buf</span><span class="p">,</span> <span class="n">BUFSIZE</span> <span class="p">);</span>
+    <span class="c1">//printf("Read %d bytes: %s\n", s, &amp;buf);</span>
+    <span class="n">bytes_recvd</span> <span class="o">+=</span> <span class="n">s</span><span class="p">;</span>
+    <span class="n">chunks_recvd</span><span class="o">++</span><span class="p">;</span>
+    <span class="k">if</span><span class="p">(</span><span class="n">connected</span> <span class="o">&gt;=</span> <span class="n">NUMCONNS</span> <span class="o">&amp;&amp;</span> <span class="n">chunks_recvd</span><span class="o">%</span><span class="mi">10000</span><span class="o">==</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">printf</span><span class="p">(</span><span class="s">"&gt;Chunks: %d</span><span class="se">\t</span><span class="s">Bytes: %d</span><span class="se">\t</span><span class="s">Closed: %d</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span> <span class="n">chunks_recvd</span><span class="p">,</span> <span class="n">bytes_recvd</span><span class="p">,</span> <span class="n">closed</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="c1">// gets called when request completes</span>
+<span class="kt">void</span> <span class="nf">reqcb</span><span class="p">(</span><span class="k">struct</span> <span class="n">evhttp_request</span> <span class="o">*</span> <span class="n">req</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span> <span class="n">arg</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">closed</span><span class="o">++</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">**</span><span class="n">argv</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">event_init</span><span class="p">();</span>
+    <span class="k">struct</span> <span class="n">evhttp</span> <span class="o">*</span><span class="n">evhttp_connection</span><span class="p">;</span>
+    <span class="k">struct</span> <span class="n">evhttp_request</span> <span class="o">*</span><span class="n">evhttp_request</span><span class="p">;</span>
+    <span class="kt">char</span> <span class="n">addr</span><span class="p">[</span><span class="mi">16</span><span class="p">];</span>
+    <span class="kt">char</span> <span class="n">path</span><span class="p">[</span><span class="mi">32</span><span class="p">];</span> <span class="c1">// eg: "/test/123"</span>
+    <span class="kt">int</span> <span class="n">i</span><span class="p">,</span><span class="n">octet</span><span class="p">;</span>
+    <span class="k">for</span><span class="p">(</span><span class="n">octet</span><span class="o">=</span><span class="mi">1</span><span class="p">;</span> <span class="n">octet</span><span class="o">&lt;=</span><span class="mi">17</span><span class="p">;</span> <span class="n">octet</span><span class="o">++</span><span class="p">){</span>
+        <span class="n">sprintf</span><span class="p">(</span><span class="o">&amp;</span><span class="n">addr</span><span class="p">,</span> <span class="s">"10.224.0.%d"</span><span class="p">,</span> <span class="n">octet</span><span class="p">);</span>
+        <span class="k">for</span><span class="p">(</span><span class="n">i</span><span class="o">=</span><span class="mi">1</span><span class="p">;</span><span class="n">i</span><span class="o">&lt;=</span><span class="n">NUMCONNS</span><span class="p">;</span><span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">evhttp_connection</span> <span class="o">=</span> <span class="n">evhttp_connection_new</span><span class="p">(</span><span class="n">SERVERADDR</span><span class="p">,</span> <span class="n">SERVERPORT</span><span class="p">);</span>
+            <span class="n">evhttp_connection_set_local_address</span><span class="p">(</span><span class="n">evhttp_connection</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">addr</span><span class="p">);</span>
+            <span class="n">evhttp_set_timeout</span><span class="p">(</span><span class="n">evhttp_connection</span><span class="p">,</span> <span class="mi">864000</span><span class="p">);</span> <span class="c1">// 10 day timeout</span>
+            <span class="n">evhttp_request</span> <span class="o">=</span> <span class="n">evhttp_request_new</span><span class="p">(</span><span class="n">reqcb</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">);</span>
+            <span class="n">evhttp_request</span><span class="o">-&gt;</span><span class="n">chunk_cb</span> <span class="o">=</span> <span class="n">chunkcb</span><span class="p">;</span>
+            <span class="n">sprintf</span><span class="p">(</span><span class="o">&amp;</span><span class="n">path</span><span class="p">,</span> <span class="s">"/test/%d"</span><span class="p">,</span> <span class="o">++</span><span class="n">connected</span><span class="p">);</span>
+            <span class="k">if</span><span class="p">(</span><span class="n">i</span><span class="o">%</span><span class="mi">100</span><span class="o">==</span><span class="mi">0</span><span class="p">)</span>  <span class="n">printf</span><span class="p">(</span><span class="s">"Req: %s</span><span class="se">\t</span><span class="s">-&gt;</span><span class="se">\t</span><span class="s">%s</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span> <span class="n">addr</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">path</span><span class="p">);</span>
+            <span class="n">evhttp_make_request</span><span class="p">(</span> <span class="n">evhttp_connection</span><span class="p">,</span> <span class="n">evhttp_request</span><span class="p">,</span> <span class="n">EVHTTP_REQ_GET</span><span class="p">,</span> <span class="n">path</span> <span class="p">);</span>
+            <span class="n">evhttp_connection_set_timeout</span><span class="p">(</span><span class="n">evhttp_request</span><span class="o">-&gt;</span><span class="n">evcon</span><span class="p">,</span> <span class="mi">864000</span><span class="p">);</span>
+            <span class="n">event_loop</span><span class="p">(</span> <span class="n">EVLOOP_NONBLOCK</span> <span class="p">);</span>
+            <span class="k">if</span><span class="p">(</span> <span class="n">connected</span> <span class="o">%</span> <span class="mi">200</span> <span class="o">==</span> <span class="mi">0</span> <span class="p">)</span>
+                <span class="n">printf</span><span class="p">(</span><span class="s">"</span><span class="se">\n</span><span class="s">Chunks: %d</span><span class="se">\t</span><span class="s">Bytes: %d</span><span class="se">\t</span><span class="s">Closed: %d</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span> <span class="n">chunks_recvd</span><span class="p">,</span> <span class="n">bytes_recvd</span><span class="p">,</span> <span class="n">closed</span><span class="p">);</span>
+            <span class="n">usleep</span><span class="p">(</span><span class="n">SLEEP_MS</span><span class="o">*</span><span class="mi">1000</span><span class="p">);</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+    <span class="n">event_dispatch</span><span class="p">();</span>
+    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>Most parameters are hardcoded as #define’s so you configure it by editing the source and recompiling.</p>
+
+<p>Compile and run:</p>
+<div class="language-console highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="gp">$</span><span class="w"> </span>gcc <span class="nt">-o</span> httpclient httpclient.c <span class="nt">-levent</span>
+<span class="gp">$</span><span class="w"> </span>./httpclient
+</code></pre></div></div>
+
+<blockquote>
+  <p><em>This still failed to open more than 64,500 ports</em>. Although it used less RAM doing it.</p>
+</blockquote>
+
+<p>It turns out that although I was specifying the local addresses, the ephemeral port allocation somewhere in the kernel or tcp stack didn’t care, and still ran out after 2^16. So in order to open more than 64,500 connections, you need to specify the local address and local port yourself, and manage them accordingly.</p>
+
+<p>Unfortunately the libevent HTTP API doesn’t have an option to specify the local port. I <a href="http://monkeymail.org/archives/libevent-users/2008-November/001415.html">patched libevent</a> to add a suitable function:</p>
+
+<div class="language-diff highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="gh">diff libevent-1.4.8-stable/evhttp.h libevent-1.4.8-stable-rj-clean/evhttp.h
+</span><span class="p">269a270,273
+</span><span class="gi">&gt; /** sets the local port from which http connections are made */
+&gt; void evhttp_connection_set_local_port(struct evhttp_connection *evcon,
+&gt;     u_short port);
+&gt;
+</span><span class="gh">diff libevent-1.4.8-stable/http.c libevent-1.4.8-stable-rj-clean/http.c
+</span><span class="p">1040a1041,1048
+</span><span class="gi">&gt; void
+&gt; evhttp_connection_set_local_port(struct evhttp_connection *evcon,
+&gt;     u_short port)
+&gt; {
+&gt;       assert(evcon-&gt;state == EVCON_DISCONNECTED);
+&gt;     evcon-&gt;bind_port = port;
+&gt; }
+&gt;
+</span><span class="p">1654a1663
+</span><span class="gi">&gt;     evcon-&gt;bind_port = 0; /* by default, use ephemeral local port */
+</span><span class="p">1734c1743
+</span><span class="gd">&lt;       evcon-&gt;fd = bind_socket(evcon-&gt;bind_address, 0 /*port*/, 0 /*reuse*/);
+</span><span class="p">---
+</span><span class="gi">&gt;       evcon-&gt;fd = bind_socket(evcon-&gt;bind_address, evcon-&gt;bind_port, 0 /*reuse*/);
+</span><span class="gh">diff libevent-1.4.8-stable/http-internal.h libevent-1.4.8-stable-rj-clean/http-internal.h
+</span><span class="p">63a64
+</span><span class="gi">&gt;       u_short bind_port;      /* port to use for binding the src */
+</span></code></pre></div></div>
+
+<blockquote>
+  <p>This was a surprisingly pleasant experience; libevent seems well written, and the documentation is pretty decent too.</p>
+</blockquote>
+
+<p>With my modified libevent installed, I was able to add the following under the set_local_address line in the above code:</p>
+
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">evhttp_connection_set_local_port</span><span class="p">(</span><span class="n">evhttp_connection</span><span class="p">,</span> <span class="mi">1024</span><span class="o">+</span><span class="n">i</span><span class="p">);</span>
+</code></pre></div></div>
+
+<p>With that in place, multiple connections from different addresses were able to use the same local port number, specific to the the local address. I recompiled the client and let it run for a bit to confirm it would break the 2^16 barrier.</p>
+
+<p><span title="Pun intended">Netstat confirms it</span>:</p>
+<div class="language-console highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="gp">#</span><span class="w"> </span>netstat <span class="nt">-n</span> | <span class="nb">awk</span> <span class="s1">'/^tcp/ {t[$NF]++}END{for(state in t){print state, t[state]} }'</span>
+<span class="go">TIME_WAIT 8
+ESTABLISHED 118222
+</span></code></pre></div></div>
+
+<p>This shows how many ports are open in various states. We’re finally able to open more than 2^16 connections, phew.</p>
+
+<p>Now we have a tool capable of opening a million http connections from a single box. It seems to consume around 2KB per connection, plus whatever the kernel needs. It’s time to use it for the “million connected user” test against our mochiweb comet server.</p>
+
+<h2 id="c1024k-test---1-million-comet-connections">C1024K Test - 1 million comet connections</h2>
+
+<p>For this test I used 4 different servers of varying specs. These specs may be overpowered for the experiment, but they were available and waiting to go into production, and this made a good burn-in test. All four servers are on the same gigabit LAN, with up to 3 switches and a router in the middle somewhere.</p>
+
+<p>The 1 million test I ran is  similar to the 10k test from parts 1 and 2, the main difference being the modified client, now written in C using libevent, and that I’m running in a proper distributed-erlang setup with more than one machine.</p>
+
+<p>On server 1 - Quad-core 2GHz CPU, 16GB of RAM</p>
+<ul>
+	<li>Start subsmanager</li>
+	<li>Load in the friends data</li>
+	<li>Start the router</li>
+</ul>
+<p>On server 2 - Dual Quad-core 2.8GHz CPU, 32GB of RAM</p>
+<ul>
+	<li>Start mochiweb app</li>
+</ul>
+<p>On server 3 - Quad-core 2GHz CPU, 16GB of RAM</p>
+<ul>
+	<li>Create 17 virtual IPs as above</li>
+	<li>Install patched libevent</li>
+    <li>Run client: <code>./httpclient</code> to create 100 connections per second, up to 1M</li>
+</ul>
+<p>On server 4 - Dual-core 2GHz, 2GB RAM</p>
+<ul>
+	<li>Run msggen program, to send lots of messages to the router</li>
+</ul>
+
+<p>I measured the memory usage of mochiweb during the ramp-up to a million connections, and for the rest of the day:</p>
+
+<figure>
+    <img src="/images/2008/11/mochimem-c1000k.png" alt="Memory usage graph" />
+    
+        <figcaption class="caption-text">Mochiweb memory, 1M connections</figcaption> 
+    
+</figure>
+
+<p>The httpclient has a built in delay of 10ms between connections, so it took nearly 3 hours to open a million connections. The resident memory used by the mochiweb process with 1M open connections was around 25GB. Here’s the server this was running on as seen by Ganglia, which measures CPU, network and memory usage and produces nice graphs:</p>
+
+<figure>
+    <img src="/images/2008/11/server21.png" alt="Memory usage graph" />
+    
+        <figcaption class="caption-text">Server running mochiweb, 1M connections</figcaption> 
+    
+</figure>
+
+<p>You can see it needs around 38GB and has started to swap. I suspect the difference is mostly consumed by the kernel to keep those connections open. The uplift at the end is when I started sending messages.</p>
+
+<p>Messages were generated using 1,000 processes, with an average time between messages of 60ms per process, giving around 16,666 messages per second overall:</p>
+
+<div class="language-erlang highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">[</span> <span class="nb">spawn</span><span class="p">(</span> <span class="k">fun</span><span class="p">()</span><span class="o">-&gt;</span><span class="nn">msggen</span><span class="p">:</span><span class="nf">start</span><span class="p">(</span><span class="mi">1000000</span><span class="p">,</span> <span class="mi">10</span><span class="o">+</span><span class="nn">random</span><span class="p">:</span><span class="nf">uniform</span><span class="p">(</span><span class="mi">100</span><span class="p">),</span> <span class="mi">1000000</span><span class="p">)</span> <span class="k">end</span><span class="p">)</span> <span class="p">||</span> <span class="nv">I</span> <span class="o">&lt;-</span> <span class="nn">lists</span><span class="p">:</span><span class="nf">seq</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">1000</span><span class="p">)</span> <span class="p">].</span>
+</code></pre></div></div>
+
+<p>The machine (server-4) generating messages looked like this on Ganglia:</p>
+
+<figure>
+    <img src="/images/2008/11/msggen.png" alt="16,666 msgs/sec" />
+    
+        <figcaption class="caption-text">16,666 msgs/sec</figcaption> 
+    
+</figure>
+
+<p>That’s 10 MB per second of messages it’s pumping out - 16,666 messages a second. Typically these messages would come from a message bus, app servers, or part of an existing infrastructure.</p>
+
+<p>When I started sending messages, the load on server 1 (hosting subsmanager and router) stayed below 1, and CPU utilization increased from 0 to 5%.</p>
+
+<p>CPU on server 2 (hosting mochiweb app, with 1M connections) increased more dramatically:</p>
+
+<figure>
+    <img src="/images/2008/11/server2.png" alt="" />
+    
+</figure>
+
+<p>Naturally as processes have to leave their hibernate state to handle messages, memory usage will increase slightly. Having all connections open with no messages is a best-case for memory usage - unsurprisingly, actually doing stuff requires more memory.</p>
+
+<p>So where does this leave us? To be on the safe side, the mochiweb machine would need 40GB of RAM to hold open 1M active comet connections. Under load, up to 30GB of the memory would be used by the mochiweb app, and the remaining 10GB by the kernel. In other words, you need to allow 40KB per connection.</p>
+
+<p>During various test with lots of connections, I ended up making some additional changes to my sysctl.conf. This was part trial-and-error, I don’t really know enough about the internals to make especially informed decisions about which values to change. My policy was to wait for things to break, check <code>/var/log/kern.log</code> and see what mysterious error was reported, then increase stuff that sounded sensible after a spot of googling. Here are the settings in place during the above test:</p>
+
+<div class="language-console highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="gp">$</span><span class="w"> </span><span class="nb">cat</span> /etc/sysctl.conf
+<span class="go">net.core.rmem_max = 33554432
+net.core.wmem_max = 33554432
+net.ipv4.tcp_rmem = 4096 16384 33554432
+net.ipv4.tcp_wmem = 4096 16384 33554432
+net.ipv4.tcp_mem = 786432 1048576 26777216
+net.ipv4.tcp_max_tw_buckets = 360000
+net.core.netdev_max_backlog = 2500
+vm.min_free_kbytes = 65536
+vm.swappiness = 0
+net.ipv4.ip_local_port_range = 1024 65535
+</span></code></pre></div></div>
+
+<p>I would like to learn more about Linux tcp tuning so I can make a more informed decision about these settings. These are almost certainly not optimal, but at least they were enough to get to 1M connections. These changes, along with the fact this is running on a 64bit Erlang VM, and thus has a wordsize of 8bytes instead of 4, might explain why the memory usage is much higher than I observed during the C10k test of part 2.</p>
+
+<h2 id="an-erlang-c-node-using-libevent">An Erlang C-Node using Libevent</h2>
+
+<p>After dabbling with the HTTP api for libevent, it seemed entirely sensible to try the 1M connection test against a libevent HTTPd written in C so we have a basis for comparison.</p>
+
+<p>I’m guessing that enabling kernel poll means the erlang VM is able to use epoll (or similar), but even so there’s clearly some overhead involved which we might be able to mitigate by delegating the connection handling to a C program using libevent. I want to reuse most of the Erlang code so far, so let’s do the bare minimum in C - just the connection handling and HTTP stuff.</p>
+
+<p>Libevent has an asynchronous HTTP API, which makes implementing http servers trivial - well, trivial for C, but still less trivial than mochiweb IMO ;) I’d also been looking for an excuse to try the Erlang C interface, so the following program combines the two. It’s a comet http server in C using libevent which identifies users using an integer Id (like our mochiweb app), and also acts as an Erlang C-Node.</p>
+
+<p>It connects to a designated erlang node, listens for messages like <code>{ 123, &lt;&lt;"Hello user 123"&gt;&gt; }</code> then dispatches “Hello user 123” to user 123, if connected. Messages for users that are not connected are discarded, just like previous examples.</p>
+
+<p>httpdcnode.c</p>
+
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="cp">#include &lt;sys/types.h&gt;
+#include &lt;sys/time.h&gt;
+#include &lt;sys/queue.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;err.h&gt;
+#include &lt;event.h&gt;
+#include &lt;evhttp.h&gt;
+#include &lt;stdio.h&gt;
+#include &lt;sys/socket.h&gt;
+#include &lt;netinet/in.h&gt;
+</span>
+<span class="cp">#include "erl_interface.h"
+#include "ei.h"
+</span>
+<span class="cp">#include &lt;pthread.h&gt;
+</span>
+<span class="cp">#define BUFSIZE 1024
+#define MAXUSERS (17*65536) // C1024K
+</span>
+<span class="c1">// List of current http requests by uid:</span>
+<span class="k">struct</span> <span class="n">evhttp_request</span> <span class="o">*</span> <span class="n">clients</span><span class="p">[</span><span class="n">MAXUSERS</span><span class="o">+</span><span class="mi">1</span><span class="p">];</span>
+<span class="c1">// Memory to store uids passed to the cleanup callback:</span>
+<span class="kt">int</span> <span class="n">slots</span><span class="p">[</span><span class="n">MAXUSERS</span><span class="o">+</span><span class="mi">1</span><span class="p">];</span>
+
+<span class="c1">// called when user disconnects</span>
+<span class="kt">void</span> <span class="nf">cleanup</span><span class="p">(</span><span class="k">struct</span> <span class="n">evhttp_connection</span> <span class="o">*</span><span class="n">evcon</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">arg</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">int</span> <span class="o">*</span><span class="n">uidp</span> <span class="o">=</span> <span class="p">(</span><span class="kt">int</span> <span class="o">*</span><span class="p">)</span> <span class="n">arg</span><span class="p">;</span>
+    <span class="n">fprintf</span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span> <span class="s">"disconnected uid %d</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span> <span class="o">*</span><span class="n">uidp</span><span class="p">);</span>
+    <span class="n">clients</span><span class="p">[</span><span class="o">*</span><span class="n">uidp</span><span class="p">]</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="c1">// handles http connections, sets them up for chunked transfer,</span>
+<span class="c1">// extracts the user id and registers in the global connection table,</span>
+<span class="c1">// also sends a welcome chunk.</span>
+<span class="kt">void</span> <span class="nf">request_handler</span><span class="p">(</span><span class="k">struct</span> <span class="n">evhttp_request</span> <span class="o">*</span><span class="n">req</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">arg</span><span class="p">)</span>
+<span class="p">{</span>
+        <span class="k">struct</span> <span class="n">evbuffer</span> <span class="o">*</span><span class="n">buf</span><span class="p">;</span>
+        <span class="n">buf</span> <span class="o">=</span> <span class="n">evbuffer_new</span><span class="p">();</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">buf</span> <span class="o">==</span> <span class="nb">NULL</span><span class="p">){</span>
+            <span class="n">err</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s">"failed to create response buffer"</span><span class="p">);</span>
+        <span class="p">}</span>
+
+        <span class="n">evhttp_add_header</span><span class="p">(</span><span class="n">req</span><span class="o">-&gt;</span><span class="n">output_headers</span><span class="p">,</span> <span class="s">"Content-Type"</span><span class="p">,</span> <span class="s">"text/html; charset=utf-8"</span><span class="p">);</span>
+
+        <span class="kt">int</span> <span class="n">uid</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>
+        <span class="k">if</span><span class="p">(</span><span class="n">strncmp</span><span class="p">(</span><span class="n">evhttp_request_uri</span><span class="p">(</span><span class="n">req</span><span class="p">),</span> <span class="s">"/test/"</span><span class="p">,</span> <span class="mi">6</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">){</span>
+            <span class="n">uid</span> <span class="o">=</span> <span class="n">atoi</span><span class="p">(</span> <span class="mi">6</span><span class="o">+</span><span class="n">evhttp_request_uri</span><span class="p">(</span><span class="n">req</span><span class="p">)</span> <span class="p">);</span>
+        <span class="p">}</span>
+
+        <span class="k">if</span><span class="p">(</span><span class="n">uid</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">){</span>
+            <span class="n">evbuffer_add_printf</span><span class="p">(</span><span class="n">buf</span><span class="p">,</span> <span class="s">"User id not found, try /test/123 instead"</span><span class="p">);</span>
+            <span class="n">evhttp_send_reply</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">HTTP_NOTFOUND</span><span class="p">,</span> <span class="s">"Not Found"</span><span class="p">,</span> <span class="n">buf</span><span class="p">);</span>
+            <span class="n">evbuffer_free</span><span class="p">(</span><span class="n">buf</span><span class="p">);</span>
+            <span class="k">return</span><span class="p">;</span>
+        <span class="p">}</span>
+
+        <span class="k">if</span><span class="p">(</span><span class="n">uid</span> <span class="o">&gt;</span> <span class="n">MAXUSERS</span><span class="p">){</span>
+            <span class="n">evbuffer_add_printf</span><span class="p">(</span><span class="n">buf</span><span class="p">,</span> <span class="s">"Max uid allowed is %d"</span><span class="p">,</span> <span class="n">MAXUSERS</span><span class="p">);</span>
+            <span class="n">evhttp_send_reply</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">HTTP_SERVUNAVAIL</span><span class="p">,</span> <span class="s">"We ran out of numbers"</span><span class="p">,</span> <span class="n">buf</span><span class="p">);</span>
+            <span class="n">evbuffer_free</span><span class="p">(</span><span class="n">buf</span><span class="p">);</span>
+            <span class="k">return</span><span class="p">;</span>
+        <span class="p">}</span>
+
+        <span class="n">evhttp_send_reply_start</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">HTTP_OK</span><span class="p">,</span> <span class="s">"OK"</span><span class="p">);</span>
+        <span class="c1">// Send welcome chunk:</span>
+        <span class="n">evbuffer_add_printf</span><span class="p">(</span><span class="n">buf</span><span class="p">,</span> <span class="s">"Welcome, Url: '%s' Id: %d</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span> <span class="n">evhttp_request_uri</span><span class="p">(</span><span class="n">req</span><span class="p">),</span> <span class="n">uid</span><span class="p">);</span>
+        <span class="n">evhttp_send_reply_chunk</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">buf</span><span class="p">);</span>
+        <span class="n">evbuffer_free</span><span class="p">(</span><span class="n">buf</span><span class="p">);</span>
+
+        <span class="c1">// put reference into global uid-&gt;connection table:</span>
+        <span class="n">clients</span><span class="p">[</span><span class="n">uid</span><span class="p">]</span> <span class="o">=</span> <span class="n">req</span><span class="p">;</span>
+        <span class="c1">// set close callback</span>
+        <span class="n">evhttp_connection_set_closecb</span><span class="p">(</span> <span class="n">req</span><span class="o">-&gt;</span><span class="n">evcon</span><span class="p">,</span> <span class="n">cleanup</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">slots</span><span class="p">[</span><span class="n">uid</span><span class="p">]</span> <span class="p">);</span>
+<span class="p">}</span>
+
+
+<span class="c1">// runs in a thread - the erlang c-node stuff</span>
+<span class="c1">// expects msgs like {uid, msg} and sends a a 'msg' chunk to uid if connected</span>
+<span class="kt">void</span> <span class="nf">cnode_run</span><span class="p">()</span>
+<span class="p">{</span>
+    <span class="kt">int</span> <span class="n">fd</span><span class="p">;</span>                                  <span class="cm">/* fd to Erlang node */</span>
+    <span class="kt">int</span> <span class="n">got</span><span class="p">;</span>                                 <span class="cm">/* Result of receive */</span>
+    <span class="kt">unsigned</span> <span class="kt">char</span> <span class="n">buf</span><span class="p">[</span><span class="n">BUFSIZE</span><span class="p">];</span>              <span class="cm">/* Buffer for incoming message */</span>
+    <span class="n">ErlMessage</span> <span class="n">emsg</span><span class="p">;</span>                         <span class="cm">/* Incoming message */</span>
+
+    <span class="n">ETERM</span> <span class="o">*</span><span class="n">uid</span><span class="p">,</span> <span class="o">*</span><span class="n">msg</span><span class="p">;</span>
+
+    <span class="n">erl_init</span><span class="p">(</span><span class="nb">NULL</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="n">erl_connect_init</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s">"secretcookie"</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">erl_err_quit</span><span class="p">(</span><span class="s">"erl_connect_init"</span><span class="p">);</span>
+
+    <span class="k">if</span> <span class="p">((</span><span class="n">fd</span> <span class="o">=</span> <span class="n">erl_connect</span><span class="p">(</span><span class="s">"httpdmaster@localhost"</span><span class="p">))</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">erl_err_quit</span><span class="p">(</span><span class="s">"erl_connect"</span><span class="p">);</span>
+
+    <span class="n">fprintf</span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span> <span class="s">"Connected to httpdmaster@localhost</span><span class="se">\n\r</span><span class="s">"</span><span class="p">);</span>
+
+    <span class="k">struct</span> <span class="n">evbuffer</span> <span class="o">*</span><span class="n">evbuf</span><span class="p">;</span>
+
+    <span class="k">while</span> <span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">got</span> <span class="o">=</span> <span class="n">erl_receive_msg</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span> <span class="n">buf</span><span class="p">,</span> <span class="n">BUFSIZE</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">emsg</span><span class="p">);</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">got</span> <span class="o">==</span> <span class="n">ERL_TICK</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">continue</span><span class="p">;</span>
+        <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">got</span> <span class="o">==</span> <span class="n">ERL_ERROR</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">fprintf</span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span> <span class="s">"ERL_ERROR from erl_receive_msg.</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
+            <span class="k">break</span><span class="p">;</span>
+        <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">emsg</span><span class="p">.</span><span class="n">type</span> <span class="o">==</span> <span class="n">ERL_REG_SEND</span><span class="p">)</span> <span class="p">{</span>
+                <span class="c1">// get uid and body data from eg: {123, &lt;&lt;"Hello"&gt;&gt;}</span>
+                <span class="n">uid</span> <span class="o">=</span> <span class="n">erl_element</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">emsg</span><span class="p">.</span><span class="n">msg</span><span class="p">);</span>
+                <span class="n">msg</span> <span class="o">=</span> <span class="n">erl_element</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">emsg</span><span class="p">.</span><span class="n">msg</span><span class="p">);</span>
+                <span class="kt">int</span> <span class="n">userid</span> <span class="o">=</span> <span class="n">ERL_INT_VALUE</span><span class="p">(</span><span class="n">uid</span><span class="p">);</span>
+                <span class="kt">char</span> <span class="o">*</span><span class="n">body</span> <span class="o">=</span> <span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="p">)</span> <span class="n">ERL_BIN_PTR</span><span class="p">(</span><span class="n">msg</span><span class="p">);</span>
+                <span class="kt">int</span> <span class="n">body_len</span> <span class="o">=</span> <span class="n">ERL_BIN_SIZE</span><span class="p">(</span><span class="n">msg</span><span class="p">);</span>
+                <span class="c1">// Is this userid connected?</span>
+                <span class="k">if</span><span class="p">(</span><span class="n">clients</span><span class="p">[</span><span class="n">userid</span><span class="p">]){</span>
+                    <span class="n">fprintf</span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span> <span class="s">"Sending %d bytes to uid %d</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span> <span class="n">body_len</span><span class="p">,</span> <span class="n">userid</span><span class="p">);</span>                
+                    <span class="n">evbuf</span> <span class="o">=</span> <span class="n">evbuffer_new</span><span class="p">();</span>
+                    <span class="n">evbuffer_add</span><span class="p">(</span><span class="n">evbuf</span><span class="p">,</span> <span class="p">(</span><span class="k">const</span> <span class="kt">void</span><span class="o">*</span><span class="p">)</span><span class="n">body</span><span class="p">,</span> <span class="p">(</span><span class="kt">size_t</span><span class="p">)</span> <span class="n">body_len</span><span class="p">);</span>
+                    <span class="n">evhttp_send_reply_chunk</span><span class="p">(</span><span class="n">clients</span><span class="p">[</span><span class="n">userid</span><span class="p">],</span> <span class="n">evbuf</span><span class="p">);</span>
+                    <span class="n">evbuffer_free</span><span class="p">(</span><span class="n">evbuf</span><span class="p">);</span>
+                <span class="p">}</span><span class="k">else</span><span class="p">{</span>
+                    <span class="n">fprintf</span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span> <span class="s">"Discarding %d bytes to uid %d - user not connected</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span> 
+                            <span class="n">body_len</span><span class="p">,</span> <span class="n">userid</span><span class="p">);</span>                
+                    <span class="c1">// noop</span>
+                <span class="p">}</span>
+                <span class="n">erl_free_term</span><span class="p">(</span><span class="n">emsg</span><span class="p">.</span><span class="n">msg</span><span class="p">);</span>
+                <span class="n">erl_free_term</span><span class="p">(</span><span class="n">uid</span><span class="p">);</span> 
+                <span class="n">erl_free_term</span><span class="p">(</span><span class="n">msg</span><span class="p">);</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+    <span class="c1">// if we got here, erlang connection died.</span>
+    <span class="c1">// this thread is supposed to run forever</span>
+    <span class="c1">// TODO - gracefully handle failure / reconnect / etc</span>
+    <span class="n">pthread_exit</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">**</span><span class="n">argv</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="c1">// Launch the thread that runs the cnode:</span>
+    <span class="n">pthread_attr_t</span> <span class="n">tattr</span><span class="p">;</span>
+    <span class="n">pthread_t</span> <span class="n">helper</span><span class="p">;</span>
+    <span class="kt">int</span> <span class="n">status</span><span class="p">;</span>
+    <span class="n">pthread_create</span><span class="p">(</span><span class="o">&amp;</span><span class="n">helper</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span> <span class="n">cnode_run</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">);</span>
+
+    <span class="kt">int</span> <span class="n">i</span><span class="p">;</span>
+    <span class="k">for</span><span class="p">(</span><span class="n">i</span><span class="o">=</span><span class="mi">0</span><span class="p">;</span><span class="n">i</span><span class="o">&lt;=</span><span class="n">MAXUSERS</span><span class="p">;</span><span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="n">slots</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">=</span><span class="n">i</span><span class="p">;</span>
+    <span class="c1">// Launch libevent httpd:</span>
+    <span class="k">struct</span> <span class="n">evhttp</span> <span class="o">*</span><span class="n">httpd</span><span class="p">;</span>
+    <span class="n">event_init</span><span class="p">();</span>
+    <span class="n">httpd</span> <span class="o">=</span> <span class="n">evhttp_start</span><span class="p">(</span><span class="s">"0.0.0.0"</span><span class="p">,</span> <span class="mi">8000</span><span class="p">);</span>
+    <span class="n">evhttp_set_gencb</span><span class="p">(</span><span class="n">httpd</span><span class="p">,</span> <span class="n">request_handler</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">);</span>
+    <span class="n">event_dispatch</span><span class="p">();</span>
+    <span class="c1">// Not reached, event_dispatch() shouldn't return</span>
+    <span class="n">evhttp_free</span><span class="p">(</span><span class="n">httpd</span><span class="p">);</span>
+    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>The maximum number of users is #defined, and similarly to the mochiweb server, it listens on port 8000 and expects users to connect with a path like so: <code>/test/&lt;userid&gt;</code>. Also hardcoded is the name of the erlang node it will connect to in order to receive messages, <code>httpdmaster@localhost</code>, and the erlang cookie, “secretcookie”. Change these accordingly.</p>
+
+<p>Run the erlang node it will connect to first:</p>
+<div class="language-console highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="gp">$</span><span class="w"> </span>erl <span class="nt">-setcookie</span> secretcookie <span class="nt">-sname</span> httpdmaster@localhost
+</code></pre></div></div>
+
+<p>Compile and run like so:</p>
+<div class="language-console highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="gp">$</span><span class="w"> </span>gcc <span class="nt">-o</span> httpdcnode httpdcnode.c <span class="nt">-lerl_interface</span> <span class="nt">-lei</span> <span class="nt">-levent</span>
+<span class="gp">$</span><span class="w"> </span>./httpdcnode
+</code></pre></div></div>
+
+<p>In the erlang shell, check you can see the hidden c-node:</p>
+<div class="language-console highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="gp">erl&gt;</span><span class="w"> </span>nodes<span class="o">(</span>hidden<span class="o">)</span><span class="nb">.</span>
+<span class="go">[c1@localhost]
+</span></code></pre></div></div>
+
+<p>Now connect in your browser to <code>http://localhost:8000/test/123</code>. You should see the welcome message.</p>
+
+<p>Now back to the erlang shell - send a message to the C node:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>erl&gt; {any, c1@localhost} ! {123, &amp;lt;&amp;lt;"Hello Libevent World"&amp;gt;&amp;gt;}.
+</code></pre></div></div>
+
+<blockquote>
+  <p>Note that we don’t have a Pid to use, so we use the alternate representation of {procname, node}. We use ‘any’ as the process name, which is ignored by the C-node.</p>
+</blockquote>
+
+<p><b>Now you’re able to deliver comet messages via Erlang, but all the http connections are managed by a libevent C program which acts as an Erlang node.</b></p>
+
+<p>After removing the debug print statements, I connected 1M clients to the httpdcnode server using the same client as above, the machine showed a total of just under 10GB or memory used. The resident memory of the server process was stable at under 2GB:</p>
+
+<figure>
+    <img src="/images/2008/11/mochimem-libevent.png" alt="Memory usage graph" />
+    
+        <figcaption class="caption-text">Memory of libevent-based server process, 1M connections</figcaption> 
+    
+</figure>
+
+<p>So big savings compared to mochiweb when handling lots of connections - the resident memory per connection for the server process with libevent is just under 2KB. With everything connected, the server machine claims:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Mem:  32968672k total,  9636488k used, 23332184k free,      180k buffers
+</code></pre></div></div>
+
+<p>So the kernel/tcp stack is consuming an additional 8KB per connection, which seems a little high, but I have no basis for comparison.</p>
+
+<p>This libevent-cnode server needs a bit more work. It doesn’t sensibly handle multiple connections from the same user yet, and there’s no locking so a race condition exists if you disconnect at just when a message was going to be dispatched.</p>
+
+<p>Even so, I think this could be generalized in such a way that would allow you to <strong>use Erlang for all the interesting stuff, and have a C+libevent process act as a dumb connection-pool</strong>. With a bit more wrapper code and callbacks into Erlang, you’d hardly need to know this was going on - the C program could be run as a driver or a C-node, and an Erlang wrapper could give you a decent api built on top of libevent. (see <a href="http://www.metabrew.com/article/erlang-libketama-driver-consistent-hashing/">this post</a> for an example Erlang C driver). I would like to experiment further with this.</p>
+
+<h2 id="final-thoughts">Final Thoughts</h2>
+
+<p>I have enough data now to judge how much hardware would be needed if we deploy a large scale comet system for Last.fm. Even a worst case of 40KB per connection isn’t unreasonable - memory is pretty cheap at the moment, and 40GB to support a million users is not unreasonable. 10GB is even better. I will finish up the app I’m building and deploy it somewhere people can try it out. Along the way I’ll tidy up the erlang memcached client I’m using and release that (from jungerl, with modifications for consistent hashing and some bug fixes), and some other things. Stay tuned :)</p>
+
+            </div>
+            <footer class="post-footer">
+               <hr>
+            </footer>
+            
+<section id="comments-area" class="comments-area">
+
+<script src="https://utteranc.es/client.js"
+    repo="RJ/www.metabrew.com"
+    issue-term="pathname"
+    label="comment"
+    theme="github-light"
+    crossorigin="anonymous"
+    async>
+</script>
+
+</section>
+
+        </article>
+        
+
+        <section class="read-next inner">
+            <h2 class="read-next-title">Read Next</h2>
+            
+            <article class="post">
+                <header class="post-header">
+                    <div class="post-meta">
+                        <time class="published" datetime="October 23, 2008">October 23, 2008</time>
+                    </div>
+                    <h3 class="post-title"><a href="/article/a-million-user-comet-application-with-mochiweb-part-2">A Million-user Comet Application with Mochiweb, Part 2</a></h3>
+                    <p class="post-tags">
+                        
+                        
+                        
+                        <a href='/tag/programming/'>Programming</a>
+                        
+                        
+                        
+                        <a href='/tag/erlang/'>Erlang</a>
+                        
+                        
+                        
+                        <a href='/tag/comet/'>Comet</a>
+                        
+                        
+                        
+                        <a href='/tag/mochiweb/'>Mochiweb</a>
+                        
+                        
+                        
+                    </p>
+                </header>
+            </article>
+            
+            
+            <article class="post">
+                <header class="post-header">
+                    <div class="post-meta">
+                        <time class="published" datetime="November 17, 2008">November 17, 2008</time>
+                    </div>
+                    <h3 class="post-title"><a href="/article/ssh-hack-connect-directly-to-machine-via-a-firewall-box">ssh hack: connect directly to machine via a firewall box</a></h3>
+                    <p class="post-tags">
+                        
+                        
+                        
+                        <a href='/tag/hacks/'>Hacks</a>
+                        
+                        
+                        
+                        <a href='/tag/hack/'>Hack</a>
+                        
+                        
+                        
+                        <a href='/tag/ssh/'>Ssh</a>
+                        
+                        
+                        
+                    </p>
+                </header>
+            </article>
+            
+        </section><!-- .read-next -->
+
+        <hr>
+
+        <!-- Create a sorted array of tags -->
+         
+        <section class="tagcloud inner">
+            <h2 class="tagcloud-title">Tags</h2>
+            <div class="tag-links">
+                
+                <a href='/tag/appmon/'>appmon</a>
+                
+                <a href='/tag/appup/'>appup</a>
+                
+                <a href='/tag/bash/'>bash</a>
+                
+                <a href='/tag/c/'>c</a>
+                
+                <a href='/tag/caching/'>caching</a>
+                
+                <a href='/tag/cnode/'>cnode</a>
+                
+                <a href='/tag/comet/'>comet</a>
+                
+                <a href='/tag/databases/'>databases</a>
+                
+                <a href='/tag/deployment/'>deployment</a>
+                
+                <a href='/tag/dht/'>dht</a>
+                
+                <a href='/tag/driver/'>driver</a>
+                
+                <a href='/tag/ejabberd/'>ejabberd</a>
+                
+                <a href='/tag/erlang/'>erlang</a>
+                
+                <a href='/tag/etop/'>etop</a>
+                
+                <a href='/tag/hack/'>hack</a>
+                
+                <a href='/tag/hacks/'>hacks</a>
+                
+                <a href='/tag/hackspace/'>hackspace</a>
+                
+                <a href='/tag/hashing/'>hashing</a>
+                
+                <a href='/tag/http/'>http</a>
+                
+                <a href='/tag/irc/'>irc</a>
+                
+                <a href='/tag/irccloud/'>irccloud</a>
+                
+                <a href='/tag/java/'>java</a>
+                
+                <a href='/tag/kernel/'>kernel</a>
+                
+                <a href='/tag/ketama/'>ketama</a>
+                
+                <a href='/tag/lastfm/'>lastfm</a>
+                
+                <a href='/tag/libevent/'>libevent</a>
+                
+                <a href='/tag/life/'>life</a>
+                
+                <a href='/tag/london/'>london</a>
+                
+                <a href='/tag/memcached/'>memcached</a>
+                
+                <a href='/tag/mnesia/'>mnesia</a>
+                
+                <a href='/tag/mochiweb/'>mochiweb</a>
+                
+                <a href='/tag/netcat/'>netcat</a>
+                
+                <a href='/tag/networking/'>networking</a>
+                
+                <a href='/tag/nosql/'>nosql</a>
+                
+                <a href='/tag/otp/'>otp</a>
+                
+                <a href='/tag/php/'>php</a>
+                
+                <a href='/tag/playdar/'>playdar</a>
+                
+                <a href='/tag/programming/'>programming</a>
+                
+                <a href='/tag/rebar/'>rebar</a>
+                
+                <a href='/tag/releasehandler/'>releasehandler</a>
+                
+                <a href='/tag/rewrite/'>rewrite</a>
+                
+                <a href='/tag/sasl/'>sasl</a>
+                
+                <a href='/tag/scalability/'>scalability</a>
+                
+                <a href='/tag/spawnfest/'>spawnfest</a>
+                
+                <a href='/tag/ssh/'>ssh</a>
+                
+                <a href='/tag/streaming/'>streaming</a>
+                
+                <a href='/tag/sysops/'>sysops</a>
+                
+                <a href='/tag/talk/'>talk</a>
+                
+                <a href='/tag/tcp/'>tcp</a>
+                
+                <a href='/tag/thrift/'>thrift</a>
+                
+                <a href='/tag/uncategorized/'>uncategorized</a>
+                
+                <a href='/tag/webtool/'>webtool</a>
+                
+                <a href='/tag/xmpp/'>xmpp</a>
+                
+                <a href='/tag/yaws/'>yaws</a>
+                
+            </div><!-- .tag-links -->
+        </section><!-- .tagcloud -->
+
+    </main><!-- .site-main -->
+
+                
+
+                <footer id="colophon" class="site-footer">
+    <p class="site-info inner">
+        Copyright <a href="#">Metabrew.com - Richard Jones</a> &copy; 2021.
+        <br>        
+
+I release all embedded source code in my blog articles to the public domain, unless otherwise specified.
+
+Article text released under the <a href="http://creativecommons.org/licenses/by-nc/4.0/">Creative Commons Attribution-NonCommercial 4.0 International License</a>.
+
+You don't need to ask me if you want to post a translated version of my work on your own website, but you must link back here as per the above license. 
+
+
+    </p>
+    <a id="back-to-top" class="back-to-top" href="#page">
+        <span class="icon-arrow-up" aria-hidden="true"></span>
+        <span class="screen-reader-text">Back to top</span>
+    </a>
+</footer><!-- .site-footer -->
+            </div><!-- .inner-wide -->
+        </div><!-- .site-content -->
+    </div><!-- .site -->
+
+    
+    <!-- Javascript Assets -->
+    <script src="/assets/js/jquery-3.3.1.min.js"></script>
+    <script src="/assets/js/plugins.js"></script>
+    <script src="/assets/js/custom.js"></script>
+
+</body>
+
+</html>

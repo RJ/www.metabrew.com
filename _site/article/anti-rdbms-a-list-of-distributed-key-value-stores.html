@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    
+        <!-- Begin Jekyll SEO tag v2.7.1 -->
+<title>Anti-RDBMS: A list of distributed key-value stores | Richard Jones</title>
+<meta name="generator" content="Jekyll v4.2.0" />
+<meta property="og:title" content="Anti-RDBMS: A list of distributed key-value stores" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="Please Note: this was written January 2009 - see the comments for updates and additional information. A lot has changed since I wrote this." />
+<meta property="og:description" content="Please Note: this was written January 2009 - see the comments for updates and additional information. A lot has changed since I wrote this." />
+<meta property="og:site_name" content="Richard Jones" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2009-01-19T00:00:00+00:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="Anti-RDBMS: A list of distributed key-value stores" />
+<script type="application/ld+json">
+{"datePublished":"2009-01-19T00:00:00+00:00","mainEntityOfPage":{"@type":"WebPage","@id":"/article/anti-rdbms-a-list-of-distributed-key-value-stores"},"url":"/article/anti-rdbms-a-list-of-distributed-key-value-stores","description":"Please Note: this was written January 2009 - see the comments for updates and additional information. A lot has changed since I wrote this.","headline":"Anti-RDBMS: A list of distributed key-value stores","dateModified":"2009-01-19T00:00:00+00:00","@type":"BlogPosting","@context":"https://schema.org"}</script>
+<!-- End Jekyll SEO tag -->
+
+    
+
+    <link type="application/atom+xml" rel="alternate" href="/feed.xml" title="Richard Jones" />
+
+    <link rel="apple-touch-icon" sizes="180x180" href="/assets/favicon/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/assets/favicon/favicon-16x16.png">
+    <link rel="manifest" href="/assets/favicon/site.webmanifest">
+
+	<link href="https://fonts.googleapis.com/css?family=Crimson+Text:400,400i,600,600i|Karla:400,400i,700,700i" rel="stylesheet">
+
+    <link href="/assets/css/style.css" rel="stylesheet">
+</head>
+
+
+
+<body class="layout-post">
+    <div id="page" class="site">
+        <header id="masthead" class="site-header">
+    <div class="site-header-wrap">
+        <div class="site-header-inside">
+
+            <div class="site-branding">
+                
+                <p class="profile">
+                    <a href="/">
+                        <img src="/assets/images/rj-headshot.jpg" alt="'s Picture"
+                            class="avatar" />
+                    </a>
+                </p>
+                <div class="site-identity">
+                    
+                    <h1 class="site-title">
+                        <a href="/">Richard Jones</a>
+                    </h1>
+                    
+
+                    <p class="site-description">Logbook / blog / devlog</p>
+
+
+                </div><!-- .site-identity -->
+                
+                <button id="menu-toggle" class="menu-toggle"><span class="screen-reader-text">Main Menu</span><span
+                        class="icon-menu" aria-hidden="true"></span></button>
+            </div><!-- .site-branding -->
+
+            <nav id="main-navigation" class="site-navigation" aria-label="Main Navigation">
+                <div class="site-nav-wrap">
+                    <div class="site-nav-inside">
+                    <ul class="menu">
+                        
+                        
+                        
+                        <li class="menu-item "><a href="/">Home</a></li>
+                        
+                        
+                        
+                        <li class="menu-item "><a href="/about">About</a></li>
+                        
+                        
+                        
+                        <li class="menu-item "><a href="/contact">Contact Me</a></li>
+                        
+                        
+                        
+                        <li class="menu-item "><a href="/search">Search</a></li>
+                        
+                    </ul>
+
+                    <p class="social-links">
+
+    <a href="https://twitter.com/metabrew" target="_blank">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path d="M459.37 151.716c.325 4.548.325 9.097.325 13.645 0 138.72-105.583 298.558-298.558 298.558-59.452 0-114.68-17.219-161.137-47.106 8.447.974 16.568 1.299 25.34 1.299 49.055 0 94.213-16.568 130.274-44.832-46.132-.975-84.792-31.188-98.112-72.772 6.498.974 12.995 1.624 19.818 1.624 9.421 0 18.843-1.3 27.614-3.573-48.081-9.747-84.143-51.98-84.143-102.985v-1.299c13.969 7.797 30.214 12.67 47.431 13.319-28.264-18.843-46.781-51.005-46.781-87.391 0-19.492 5.197-37.36 14.294-52.954 51.655 63.675 129.3 105.258 216.365 109.807-1.624-7.797-2.599-15.918-2.599-24.04 0-57.828 46.782-104.934 104.934-104.934 30.213 0 57.502 12.67 76.67 33.137 23.715-4.548 46.456-13.32 66.599-25.34-7.798 24.366-24.366 44.833-46.132 57.827 21.117-2.273 41.584-8.122 60.426-16.243-14.292 20.791-32.161 39.308-52.628 54.253z"/></svg>
+<!--
+Font Awesome Free 5.5.0 by @fontawesome - https://fontawesome.com
+License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License)
+-->
+    </a>
+
+    <a href="https://github.com/RJ" target="_blank">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg>
+<!--
+Font Awesome Free 5.5.0 by @fontawesome - https://fontawesome.com
+License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License)
+-->
+    </a>
+    
+    <a href="https://www.last.fm/user/RJ" target="_blank">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path d="M400 32H48C21.5 32 0 53.5 0 80v352c0 26.5 21.5 48 48 48h352c26.5 0 48-21.5 48-48V80c0-26.5-21.5-48-48-48zm-92.2 312.9c-63.4 0-85.4-28.6-97.1-64.1c-16.3-51-21.5-84.3-63-84.3c-22.4 0-45.1 16.1-45.1 61.2c0 35.2 18 57.2 43.3 57.2c28.6 0 47.6-21.3 47.6-21.3l11.7 31.9s-19.8 19.4-61.2 19.4c-51.3 0-79.9-30.1-79.9-85.8c0-57.9 28.6-92 82.5-92c73.5 0 80.8 41.4 100.8 101.9c8.8 26.8 24.2 46.2 61.2 46.2c24.9 0 38.1-5.5 38.1-19.1c0-19.9-21.8-22-49.9-28.6c-30.4-7.3-42.5-23.1-42.5-48c0-40 32.3-52.4 65.2-52.4c37.4 0 60.1 13.6 63 46.6l-36.7 4.4c-1.5-15.8-11-22.4-28.6-22.4c-16.1 0-26 7.3-26 19.8c0 11 4.8 17.6 20.9 21.3c32.7 7.1 71.8 12 71.8 57.5c.1 36.7-30.7 50.6-76.1 50.6z"/></svg>
+    </a>
+
+    <a href="/rss.xml" target="_blank">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><path d="M128.081 415.959c0 35.369-28.672 64.041-64.041 64.041S0 451.328 0 415.959s28.672-64.041 64.041-64.041 64.04 28.673 64.04 64.041zm175.66 47.25c-8.354-154.6-132.185-278.587-286.95-286.95C7.656 175.765 0 183.105 0 192.253v48.069c0 8.415 6.49 15.472 14.887 16.018 111.832 7.284 201.473 96.702 208.772 208.772.547 8.397 7.604 14.887 16.018 14.887h48.069c9.149.001 16.489-7.655 15.995-16.79zm144.249.288C439.596 229.677 251.465 40.445 16.503 32.01 7.473 31.686 0 38.981 0 48.016v48.068c0 8.625 6.835 15.645 15.453 15.999 191.179 7.839 344.627 161.316 352.465 352.465.353 8.618 7.373 15.453 15.999 15.453h48.068c9.034-.001 16.329-7.474 16.005-16.504z"/></svg>
+<!--
+Font Awesome Free 5.5.0 by @fontawesome - https://fontawesome.com
+License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License)
+-->
+    </a>
+    
+</p>
+
+                    </div><!-- .site-nav-inside -->
+                </div><!-- .site-nav-wrap -->
+            </nav><!-- .site-navigation -->
+
+            <!-- <div>
+                Foo bar
+
+            </div> -->
+
+        </div><!-- .site-header-inside -->
+    </div><!-- .site-header-wrap -->
+</header><!-- .site-header -->
+        <div id="content" class="site-content fadeInDown">
+            <div class="inner-wide">
+                    <main id="main" class="site-main">
+    
+        <article class="post-full inner">
+
+            <header class="post-header">
+                <div class="post-meta">
+                    Published <time class="post-date" datetime="2009-01-19">January 19,
+                        2009</time>
+                </div><!-- .post-meta -->
+                <h1 class="post-title">Anti-RDBMS: A list of distributed key-value stores</h1>
+                
+                <div class="post-tags">
+                     
+                    <a href='/tag/programming/'>programming</a>
+                    
+                     
+                    <a href='/tag/erlang/'>erlang</a>
+                    
+                     
+                    <a href='/tag/hashing/'>hashing</a>
+                    
+                     
+                    <a href='/tag/java/'>java</a>
+                    
+                     
+                    <a href='/tag/databases/'>databases</a>
+                    
+                     
+                    <a href='/tag/dht/'>dht</a>
+                    
+                     
+                    <a href='/tag/nosql/'>nosql</a>
+                    
+                    
+                </div>
+                
+            </header><!-- .post-header -->
+
+            
+            <div class="post-content">
+                <p><em>Please Note: this was written January 2009 - see the comments for updates and additional information. A lot has changed since I wrote this.</em></p>
+
+<hr />
+
+<p>Perhaps you’re considering using a dedicated key-value or document store instead of a traditional relational database. Reasons for this might include:</p>
+<ol>
+	<li>You're suffering from Cloud-computing Mania.</li>
+	<li>You need an excuse to 'get your Erlang on'</li>
+	<li>You heard CouchDB was cool.</li>
+	<li>You hate MySQL, and although PostgreSQL is much better, it still doesn't have decent replication. There's no chance you're buying Oracle licenses.</li>
+	<li>Your data is stored and retrieved mainly by primary key, without complex joins.</li>
+	<li>You have a non-trivial amount of data, and the thought of managing lots of RDBMS shards and replication failure scenarios gives you the fear.</li>
+</ol>
+<p>Whatever your reasons, there are a lot of options to chose from. At Last.fm we do a lot of batch computation in Hadoop, then dump it out to other machines where it’s indexed and served up over HTTP and <a href="http://developers.facebook.com/thrift/">Thrift</a> as an internal service (stuff like ‘most popular songs in London, UK this week’ etc). Presently we’re using a home-grown index format which points into large files containing lots of data spanning many keys, similar to the Haystack approach mentioned in <a href="http://perspectives.mvdirona.com/2008/06/30/FacebookNeedleInAHaystackEfficientStorageOfBillionsOfPhotos.aspx">this article about Facebook photo storage</a>. It works, but rather than build our own replication and partitioning system on top of this, we are looking to potentially replace it with a distributed, resilient key-value store for reasons 4, 5 and 6 above.</p>
+
+<p>This article represents my notes and research to date on distributed key-value stores (and some other stuff) that might be suitable as RDBMS replacements under the right conditions. I’m expecting to try some of these out and investigate further in the coming months.</p>
+
+<h4 id="glossary-and-background-reading">Glossary and Background Reading</h4>
+<ul>
+<li>
+ <a href="http://en.wikipedia.org/wiki/Distributed_hash_table">Distributed Hash Table (DHT)</a> 
+ and algorithms such as Chord or Kadmelia
+</li>
+
+<li>
+  <a href="http://www.allthingsdistributed.com/2007/10/amazons_dynamo.html">Amazon's Dynamo Paper</a>, 
+  and <a href="http://www.readwriteweb.com/archives/amazon_dynamo.php">this ReadWriteWeb article about Dynamo</a> which explains why such a system is invaluable
+</li>
+
+<li>
+    <a href="http://aws.amazon.com/simpledb/">Amazon's SimpleDB Service</a>, 
+    and <a href="http://gigaom.com/2007/12/14/amazon-simple-db/">some</a>
+    <a href="http://www.satine.org/archives/2007/12/13/amazon-simpledb/">commentary</a>
+</li>
+<li><a href="http://labs.google.com/papers/bigtable.html">Google's BigTable paper</a></li>
+<li><a href="http://en.wikipedia.org/wiki/Paxos_algorithm">The Paxos Algorithm</a> - read this page in order to appreciate that knocking up a Paxos implementation isn't something you'd want to do whilst hungover on a Saturday morning.</li>
+</ul>
+
+<h3 id="the-shortlist">The Shortlist</h3>
+<p>Here is a list of projects that could potentially replace a group of relational database shards. Some of these are much more than key-value stores, and aren’t suitable for low-latency data serving, but are interesting none-the-less.</p>
+
+<style type="text/css">
+#matrix td{ font-size:90%; vertical-align:top; padding: 3px; } #matrix tr { background: #f0f0f0; } #matrix tr.odd { background: #ddd; } 
+#matrix td.bigger {font-size:100%;}
+</style>
+
+<table id="matrix" border="0">
+<tbody>
+<tr class="odd" style="font-weight:bold;">
+<td class="bigger">Name</td>
+<td>Language</td>
+<td>Fault-tolerance</td>
+<td>Persistence</td>
+<td>Client Protocol</td>
+<td>Data model</td>
+<td>Docs</td>
+<td>Community</td>
+</tr>
+<tr>
+<td style="font-weight:bold" class="bigger"><a class="external text" title="http://project-voldemort.com/" href="http://project-voldemort.com/">Project Voldemort</a></td>
+<td>Java</td>
+<td>partitioned, replicated, read-repair</td>
+<td>Pluggable: BerkleyDB, Mysql</td>
+<td>Java API</td>
+<td>Structured / blob / text</td>
+<td>A</td>
+<td>Linkedin, no</td>
+</tr>
+<tr class="odd">
+<td style="font-weight:bold" class="bigger"><a class="external text" title="http://github.com/tuulos/ringo/tree/master" href="http://github.com/tuulos/ringo/tree/master">Ringo</a></td>
+<td>Erlang</td>
+<td>partitioned, replicated, immutable</td>
+<td>Custom on-disk (append only log)</td>
+<td>HTTP</td>
+<td>blob</td>
+<td>B</td>
+<td>Nokia, no</td>
+</tr>
+<tr>
+<td style="font-weight:bold" class="bigger"><a class="external text" title="http://code.google.com/p/scalaris/" href="http://code.google.com/p/scalaris/">Scalaris</a></td>
+<td>Erlang</td>
+<td>partitioned, replicated, paxos</td>
+<td>In-memory only</td>
+<td>Erlang, Java, HTTP</td>
+<td>blob</td>
+<td>B</td>
+<td>OnScale, no</td>
+</tr>
+<tr class="odd">
+<td style="font-weight:bold" class="bigger"><a class="external text" title="http://kai.wiki.sourceforge.net/" href="http://kai.wiki.sourceforge.net/">Kai</a></td>
+<td>Erlang</td>
+<td>partitioned, replicated?</td>
+<td>On-disk Dets file</td>
+<td>Memcached</td>
+<td>blob</td>
+<td>C</td>
+<td>no</td>
+</tr>
+<tr>
+<td style="font-weight:bold" class="bigger"><a class="external text" title="http://github.com/cliffmoon/dynomite/tree/master" href="http://github.com/cliffmoon/dynomite/tree/master">Dynomite</a></td>
+<td>Erlang</td>
+<td>partitioned, replicated</td>
+<td>Pluggable: couch, dets</td>
+<td>Custom ascii, Thrift</td>
+<td>blob</td>
+<td>D+</td>
+<td>Powerset, no</td>
+</tr>
+<tr class="odd">
+<td style="font-weight:bold" class="bigger"><a class="external text" title="http://memcachedb.org/" href="http://memcachedb.org/">MemcacheDB</a></td>
+<td>C</td>
+<td>replication</td>
+<td>BerkleyDB</td>
+<td>Memcached</td>
+<td>blob</td>
+<td>B</td>
+<td>some</td>
+</tr>
+<tr>
+<td style="font-weight:bold" class="bigger"><a class="external text" title="http://code.google.com/p/thrudb/" href="http://code.google.com/p/thrudb/">ThruDB</a></td>
+<td>C++</td>
+<td>Replication</td>
+<td>Pluggable: BerkleyDB, Custom, Mysql, S3</td>
+<td>Thrift</td>
+<td>Document oriented</td>
+<td>C+</td>
+<td>Third rail, unsure</td>
+</tr>
+<tr class="odd">
+<td style="font-weight:bold" class="bigger"><a class="external text" title="http://couchdb.apache.org/" href="http://couchdb.apache.org/">CouchDB</a></td>
+<td>Erlang</td>
+<td>Replication, partitioning?</td>
+<td>Custom on-disk</td>
+<td>HTTP, json</td>
+<td>Document oriented (json)</td>
+<td>A</td>
+<td>Apache, yes</td>
+</tr>
+<tr>
+<td style="font-weight:bold" class="bigger"><a class="external text" title="http://code.google.com/p/the-cassandra-project/" href="http://code.google.com/p/the-cassandra-project/">Cassandra</a></td>
+<td>Java</td>
+<td>Replication, partitioning</td>
+<td>Custom on-disk</td>
+<td>Thrift</td>
+<td>Bigtable meets Dynamo</td>
+<td>F</td>
+<td>Facebook, no</td>
+</tr>
+<tr class="odd">
+<td style="font-weight:bold" class="bigger"><a class="external text" title="http://hadoop.apache.org/hbase/" href="http://hadoop.apache.org/hbase/">HBase</a></td>
+<td>Java</td>
+<td>Replication, partitioning</td>
+<td>Custom on-disk</td>
+<td>Custom API, Thrift, Rest</td>
+<td>Bigtable</td>
+<td>A</td>
+<td>Apache, yes</td>
+</tr>
+<tr>
+<td style="font-weight:bold" class="bigger"><a class="external text" title="http://hypertable.org/" href="http://hypertable.org/">Hypertable</a></td>
+<td>C++</td>
+<td>Replication, partitioning</td>
+<td>Custom on-disk</td>
+<td>Thrift, other</td>
+<td>Bigtable</td>
+<td>A</td>
+<td>Zvents, Baidu, yes</td>
+</tr>
+</tbody></table>
+<p><br /></p>
+
+<h3 id="why-5-of-these-arent-suitable">Why 5 of these aren’t suitable</h3>
+
+<p>What I’m really looking for is a low latency, replicated, distributed key-value store. Something that scales well as you feed it more machines, and doesn’t require much setup or maintenance - it should just work. The API should be that of a simple hashtable: set(key, val), get(key), delete(key). This would dispense with the hassle of managing a sharded / replicated database setup, and hopefully be capable of serving up data by primary key efficiently.</p>
+
+<p>Five of the projects on the list are far from being simple key-value stores, and as such don’t meet the requirements - but they are definitely worth a mention.</p>
+
+<h4 id="hadoop">Hadoop</h4>
+<p>We’re already heavy users of Hadoop, and have been experimenting with Hbase for a while. It’s much more than a KV store, but latency is too great to serve data to the website. We will probably use Hbase internally for other stuff though - we already have stacks of data in HDFS.</p>
+
+<h4 id="hypertable">Hypertable</h4>
+<p>Hypertable provides a similar feature set to Hbase (both are inspired by Google’s Bigtable). They recently announced a new sponsor, Baidu - the biggest Chinese search engine. Definitely one to watch, but doesn’t fit the low-latency KV store bill either.</p>
+
+<h4 id="cassandra">Cassandra</h4>
+<p>Cassandra sounded very promising when the source was released by Facebook last year. They use it for inbox search. It’s Bigtable-esque, but uses a DHT so doesn’t need a central server (one of the Cassandra developers previously worked at Amazon on Dynamo). Unfortunately it’s languished in relative obscurity since release, because Facebook never really seemed interested in it as an open-source project. From what I can tell there isn’t much in the way of documentation or a community around the project at present.</p>
+
+<h4 id="couchdb">CouchDB</h4>
+<p>CouchDB is an interesting one - it’s a “distributed, fault-tolerant and schema-free document-oriented database accessible via a RESTful HTTP/JSON API”. Data is stored in ‘documents’, which are essentially key-value maps themselves, using the data types you see in JSON.  Read the <a href="http://couchdb.apache.org/docs/overview.html">CouchDB Technical Overview</a> if you are curious how the web’s trendiest document database works under the hood. This article on the <a href="http://push.cx/2009/rules-of-database-app-aging">Rules of Database App Aging</a> goes some way to explaining why document-oriented databases make sense. CouchDB can do full text indexing of your documents, and lets you express views over your data in Javascript. I could imagine using CouchDB to store lots of data on users: name, age, sex, address, IM name and lots of other fields, many of which could be null, and each site update adds or changes the available fields. In situations like that it quickly gets unwieldly adding and changing columns in a database, and updating versions of your application code to match. Although many people are using CouchDB in production, their FAQ points out they may still make backwards-incompatible changes to the storage format and API before version 1.0.</p>
+
+<h4 id="thrudb">ThruDB</h4>
+<p>ThruDB is a document storage and indexing system made up for four components: a document storage service, indexing service, message queue and proxy. It uses Thrift for communication, and has a pluggable storage subsystem, including an Amazon S3 option. It’s designed to scale well horizontally, and might be a better option that CouchDB if you are running on EC2. I’ve heard a lot more about CouchDB than Thrudb recently, but it’s definitely worth a look if you need a document database. It’s not suitable for our needs for the same reasons as CouchDB.</p>
+
+<h3 id="distributed-key-value-stores">Distributed key-value stores</h3>
+
+<p>The rest are much closer to being ‘simple’ key-value stores with low enough latency to be used for serving data used to build dynamic pages. Latency will be dependent on the environment, and whether or not the dataset fits in memory. If it does, I’d expect sub-10ms response time, and if not, it all depends on how much money you spent on spinning rust.</p>
+
+<h4 id="memcachedb">MemcacheDB</h4>
+
+<p>Essentially just memcached that saves stuff to disk using a Berkeley database. As useful as this may be for some situations, it doesn’t deal with replication and partitioning (sharding), so it would still require a lot of work to make it scale horizontally and be tolerant of machine failure. Other memcached derivatives such as <a href="http://repcached.lab.klab.org/">repcached</a> go some way to addressing this by giving you the ability to replicate entire memcache servers (async master-slave setup), but without partitioning it’s still going to be a pain to manage.</p>
+
+<h4 id="project-voldemort">Project Voldemort</h4>
+
+<p>Looks <em>awesome</em>. Go and read the <a href="http://project-voldemort.com/">rather splendid website</a>, which explains how it works, and includes pretty diagrams and a good description of how consistent hashing is used in the Design section. (If consistent hashing butters your muffin, check out <a href="http://www.last.fm/user/RJ/journal/2007/04/10/rz_libketama_-_a_consistent_hashing_algo_for_memcache_clients">libketama - a consistent hashing library</a> and the <a href="http://www.metabrew.com/article/erlang-libketama-driver-consistent-hashing/">Erlang libketama driver</a>). Project-Voldemort handles replication and partitioning of data, and appears to be well written and designed. It’s reassuring to read in the docs how easy it is to swap out and mock different components for testing. It’s non-trivial to add nodes to a running cluster, but according to the mailing-list this is being worked on. It sounds like this would fit the bill if we ran it with a Java load-balancer service (see their Physical Architecture Options diagram) that exposed a Thrift API so all our non-Java clients could use it.</p>
+
+<h4 id="scalaris">Scalaris</h4>
+
+<p>Probably the most face-meltingly awesome thing you could build in Erlang. CouchDB, Ejabberd and RabbitMQ are cool, but Scalaris packs by far the most impressive collection of sexy technologies. Scalaris is a key-value store - it uses a modified version of the Chord algorithm to form a DHT, and stores the keys in lexicographical order, so range queries are possible. Although I didn’t see this explicitly mentioned, this should open up all sorts of interesting options for batch processing - map-reduce for example.  On top of the DHT they use an improved version of <a href="http://en.wikipedia.org/wiki/Paxos_algorithm">Paxos</a> to guarantee ACID properties when dealing with multiple concurrent transactions. So it’s a key-value store, but it can guarantee the ACID properties and do proper distributed transactions over multiple keys.</p>
+
+<p>Oh, and to demonstrate how you can scale a webservice based on such a system, the Scalaris folk implemented their own version of Wikipedia on Scalaris, loaded in the Wikipedia data, and benchmarked their setup to prove it can do more transactions/sec on equal hardware than the classic PHP/MySQL combo that Wikipedia use. Yikes.</p>
+
+<p>From what I can tell, Scalaris is only memory-resident at the moment and doesn’t persist data to disk. This makes it entirely impractical to actually run a service like Wikipedia on Scalaris for real - but it sounds like they tackled the hard problems first, and persisting to disk should be a walk in the park after you rolled your own version of Chord and made Paxos your bitch. Take a look at this presentation about Scalaris from the Erlang Exchange conference: <a href="http://video.google.com/videoplay?docid=6981137233069932108&amp;ei=caB0SaPUNIW0iALk-9CMBQ">
+    Scalaris presentation video
+  </a></p>
+
+<h4 id="the-rest">The Rest</h4>
+
+<p>The reminaing projects, <em>Dynomite</em>, <em>Ringo</em> and <em>Ka</em> are all, more or less, trying to be Dynamo. Of the three, <em>Ringo</em> looks to be the most specialist - it makes a distinction between small (less than 4KB) and medium-size data items (&lt;100MB). Medium sized items are stored in individual files, whereas small items are all stored in an append-log, the index of which is read into memory at startup. From what I can tell, Ringo can be used in conjunction with the Erlang map-reduce framework Nokia are working on called <a href="http://discoproject.org">Disco</a>.</p>
+
+<p>I didn’t find out much about <em>Kai</em> other than it’s rather new, and some mentions in Japanese. You can chose either Erlang ets or dets as the storage system (memory or disk, respectively), and it uses the memcached protocol, so it will already have client libraries in many languages.</p>
+
+<p><em>Dynomite</em> doesn’t have great documentation, but it seems to be more capable than Kai, and is under active development. It has pluggable backends including the storage mechanism from CouchDB, so the 2GB file limit in dets won’t be an issue. Also I heard that Powerset are using it, so that’s encouraging.</p>
+
+<h3 id="summary">Summary</h3>
+
+<p>Scalaris is fascinating, and I hope I can find the time to experiment more with it, but it needs to save stuff to disk before it’d be useful for the kind of things we might use it for at Last.fm.</p>
+
+<p>I’m keeping an eye on Dynomite - hopefully more information will surface about what Powerset are doing with it, and how it performs at a large scale.</p>
+
+<p>Based on my research so far, Project-Voldemort looks like the most suitable for our needs. I’d love to hear more about how it’s used at LinkedIn, and how many nodes they are running it on.</p>
+
+<h3 id="what-else-is-there">What else is there?</h3>
+
+<p>Here are some other related projects:</p>
+<ul>
+	<li><a href="http://www.hazelcast.com/">Hazelcast</a> - Java DHT/clustering library</li>
+	<li><a href="http://blitiri.com.ar/p/nmdb/">nmdb</a> - a network database (dbm-style)</li>
+	<li><a href="http://open-chord.sourceforge.net/">Open Chord</a> - Java DHT</li>
+</ul>
+
+<p>If you know of anything I’ve missed off the list, or have any feedback/suggestions, please post a comment. I’m especially interested in hearing about people who’ve tested or are using KV-stores in lieu of relational databases.</p>
+
+<p><em>UPDATE 1:</em> Corrected table: memcachedb does replication, as per BerkeleyDB.</p>
+
+            </div>
+            <footer class="post-footer">
+               <hr>
+            </footer>
+            
+<section id="comments-area" class="comments-area">
+
+<script src="https://utteranc.es/client.js"
+    repo="RJ/www.metabrew.com"
+    issue-term="pathname"
+    label="comment"
+    theme="github-light"
+    crossorigin="anonymous"
+    async>
+</script>
+
+</section>
+
+        </article>
+        
+
+        <section class="read-next inner">
+            <h2 class="read-next-title">Read Next</h2>
+            
+            <article class="post">
+                <header class="post-header">
+                    <div class="post-meta">
+                        <time class="published" datetime="January 8, 2009">January 8, 2009</time>
+                    </div>
+                    <h3 class="post-title"><a href="/article/how-we-use-irc-at-lastfm">How we use IRC at Last.fm</a></h3>
+                    <p class="post-tags">
+                        
+                        
+                        
+                        <a href='/tag/programming/'>Programming</a>
+                        
+                        
+                        
+                        <a href='/tag/lastfm/'>Lastfm</a>
+                        
+                        
+                        
+                        <a href='/tag/irc/'>Irc</a>
+                        
+                        
+                        
+                        <a href='/tag/java/'>Java</a>
+                        
+                        
+                        
+                    </p>
+                </header>
+            </article>
+            
+            
+            <article class="post">
+                <header class="post-header">
+                    <div class="post-meta">
+                        <time class="published" datetime="October 8, 2009">October 8, 2009</time>
+                    </div>
+                    <h3 class="post-title"><a href="/article/erlang-talk-at-london-hackspace">Erlang talk at London Hackspace</a></h3>
+                    <p class="post-tags">
+                        
+                        
+                        
+                        <a href='/tag/uncategorized/'>Uncategorized</a>
+                        
+                        
+                        
+                        <a href='/tag/erlang/'>Erlang</a>
+                        
+                        
+                        
+                        <a href='/tag/playdar/'>Playdar</a>
+                        
+                        
+                        
+                        <a href='/tag/london/'>London</a>
+                        
+                        
+                        
+                        <a href='/tag/hackspace/'>Hackspace</a>
+                        
+                        
+                        
+                        <a href='/tag/talk/'>Talk</a>
+                        
+                        
+                        
+                    </p>
+                </header>
+            </article>
+            
+        </section><!-- .read-next -->
+
+        <hr>
+
+        <!-- Create a sorted array of tags -->
+         
+        <section class="tagcloud inner">
+            <h2 class="tagcloud-title">Tags</h2>
+            <div class="tag-links">
+                
+                <a href='/tag/appmon/'>appmon</a>
+                
+                <a href='/tag/appup/'>appup</a>
+                
+                <a href='/tag/bash/'>bash</a>
+                
+                <a href='/tag/c/'>c</a>
+                
+                <a href='/tag/caching/'>caching</a>
+                
+                <a href='/tag/cnode/'>cnode</a>
+                
+                <a href='/tag/comet/'>comet</a>
+                
+                <a href='/tag/databases/'>databases</a>
+                
+                <a href='/tag/deployment/'>deployment</a>
+                
+                <a href='/tag/dht/'>dht</a>
+                
+                <a href='/tag/driver/'>driver</a>
+                
+                <a href='/tag/ejabberd/'>ejabberd</a>
+                
+                <a href='/tag/erlang/'>erlang</a>
+                
+                <a href='/tag/etop/'>etop</a>
+                
+                <a href='/tag/hack/'>hack</a>
+                
+                <a href='/tag/hacks/'>hacks</a>
+                
+                <a href='/tag/hackspace/'>hackspace</a>
+                
+                <a href='/tag/hashing/'>hashing</a>
+                
+                <a href='/tag/http/'>http</a>
+                
+                <a href='/tag/irc/'>irc</a>
+                
+                <a href='/tag/irccloud/'>irccloud</a>
+                
+                <a href='/tag/java/'>java</a>
+                
+                <a href='/tag/kernel/'>kernel</a>
+                
+                <a href='/tag/ketama/'>ketama</a>
+                
+                <a href='/tag/lastfm/'>lastfm</a>
+                
+                <a href='/tag/libevent/'>libevent</a>
+                
+                <a href='/tag/life/'>life</a>
+                
+                <a href='/tag/london/'>london</a>
+                
+                <a href='/tag/memcached/'>memcached</a>
+                
+                <a href='/tag/mnesia/'>mnesia</a>
+                
+                <a href='/tag/mochiweb/'>mochiweb</a>
+                
+                <a href='/tag/netcat/'>netcat</a>
+                
+                <a href='/tag/networking/'>networking</a>
+                
+                <a href='/tag/nosql/'>nosql</a>
+                
+                <a href='/tag/otp/'>otp</a>
+                
+                <a href='/tag/php/'>php</a>
+                
+                <a href='/tag/playdar/'>playdar</a>
+                
+                <a href='/tag/programming/'>programming</a>
+                
+                <a href='/tag/rebar/'>rebar</a>
+                
+                <a href='/tag/releasehandler/'>releasehandler</a>
+                
+                <a href='/tag/rewrite/'>rewrite</a>
+                
+                <a href='/tag/sasl/'>sasl</a>
+                
+                <a href='/tag/scalability/'>scalability</a>
+                
+                <a href='/tag/spawnfest/'>spawnfest</a>
+                
+                <a href='/tag/ssh/'>ssh</a>
+                
+                <a href='/tag/streaming/'>streaming</a>
+                
+                <a href='/tag/sysops/'>sysops</a>
+                
+                <a href='/tag/talk/'>talk</a>
+                
+                <a href='/tag/tcp/'>tcp</a>
+                
+                <a href='/tag/thrift/'>thrift</a>
+                
+                <a href='/tag/uncategorized/'>uncategorized</a>
+                
+                <a href='/tag/webtool/'>webtool</a>
+                
+                <a href='/tag/xmpp/'>xmpp</a>
+                
+                <a href='/tag/yaws/'>yaws</a>
+                
+            </div><!-- .tag-links -->
+        </section><!-- .tagcloud -->
+
+    </main><!-- .site-main -->
+
+                
+
+                <footer id="colophon" class="site-footer">
+    <p class="site-info inner">
+        Copyright <a href="#">Metabrew.com - Richard Jones</a> &copy; 2021.
+        <br>        
+
+I release all embedded source code in my blog articles to the public domain, unless otherwise specified.
+
+Article text released under the <a href="http://creativecommons.org/licenses/by-nc/4.0/">Creative Commons Attribution-NonCommercial 4.0 International License</a>.
+
+You don't need to ask me if you want to post a translated version of my work on your own website, but you must link back here as per the above license. 
+
+
+    </p>
+    <a id="back-to-top" class="back-to-top" href="#page">
+        <span class="icon-arrow-up" aria-hidden="true"></span>
+        <span class="screen-reader-text">Back to top</span>
+    </a>
+</footer><!-- .site-footer -->
+            </div><!-- .inner-wide -->
+        </div><!-- .site-content -->
+    </div><!-- .site -->
+
+    
+    <!-- Javascript Assets -->
+    <script src="/assets/js/jquery-3.3.1.min.js"></script>
+    <script src="/assets/js/plugins.js"></script>
+    <script src="/assets/js/custom.js"></script>
+
+</body>
+
+</html>

@@ -1,0 +1,910 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    
+        <!-- Begin Jekyll SEO tag v2.7.1 -->
+<title>Erlang rebar tutorial: generating releases and upgrades | Richard Jones</title>
+<meta name="generator" content="Jekyll v4.2.0" />
+<meta property="og:title" content="Erlang rebar tutorial: generating releases and upgrades" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="During my experiments with rebar, I made a simple example app for testing upgrades and releases. This article will walk you through using rebar to create an application, lay it out properly, package and deploy it, and create and install new versions without downtime." />
+<meta property="og:description" content="During my experiments with rebar, I made a simple example app for testing upgrades and releases. This article will walk you through using rebar to create an application, lay it out properly, package and deploy it, and create and install new versions without downtime." />
+<meta property="og:site_name" content="Richard Jones" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2011-03-26T00:00:00+00:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="Erlang rebar tutorial: generating releases and upgrades" />
+<script type="application/ld+json">
+{"datePublished":"2011-03-26T00:00:00+00:00","mainEntityOfPage":{"@type":"WebPage","@id":"/article/erlang-rebar-tutorial-generating-releases-upgrades"},"url":"/article/erlang-rebar-tutorial-generating-releases-upgrades","description":"During my experiments with rebar, I made a simple example app for testing upgrades and releases. This article will walk you through using rebar to create an application, lay it out properly, package and deploy it, and create and install new versions without downtime.","headline":"Erlang rebar tutorial: generating releases and upgrades","dateModified":"2011-03-26T00:00:00+00:00","@type":"BlogPosting","@context":"https://schema.org"}</script>
+<!-- End Jekyll SEO tag -->
+
+    
+
+    <link type="application/atom+xml" rel="alternate" href="/feed.xml" title="Richard Jones" />
+
+    <link rel="apple-touch-icon" sizes="180x180" href="/assets/favicon/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/assets/favicon/favicon-16x16.png">
+    <link rel="manifest" href="/assets/favicon/site.webmanifest">
+
+	<link href="https://fonts.googleapis.com/css?family=Crimson+Text:400,400i,600,600i|Karla:400,400i,700,700i" rel="stylesheet">
+
+    <link href="/assets/css/style.css" rel="stylesheet">
+</head>
+
+
+
+<body class="layout-post">
+    <div id="page" class="site">
+        <header id="masthead" class="site-header">
+    <div class="site-header-wrap">
+        <div class="site-header-inside">
+
+            <div class="site-branding">
+                
+                <p class="profile">
+                    <a href="/">
+                        <img src="/assets/images/rj-headshot.jpg" alt="'s Picture"
+                            class="avatar" />
+                    </a>
+                </p>
+                <div class="site-identity">
+                    
+                    <h1 class="site-title">
+                        <a href="/">Richard Jones</a>
+                    </h1>
+                    
+
+                    <p class="site-description">Logbook / blog / devlog</p>
+
+
+                </div><!-- .site-identity -->
+                
+                <button id="menu-toggle" class="menu-toggle"><span class="screen-reader-text">Main Menu</span><span
+                        class="icon-menu" aria-hidden="true"></span></button>
+            </div><!-- .site-branding -->
+
+            <nav id="main-navigation" class="site-navigation" aria-label="Main Navigation">
+                <div class="site-nav-wrap">
+                    <div class="site-nav-inside">
+                    <ul class="menu">
+                        
+                        
+                        
+                        <li class="menu-item "><a href="/">Home</a></li>
+                        
+                        
+                        
+                        <li class="menu-item "><a href="/about">About</a></li>
+                        
+                        
+                        
+                        <li class="menu-item "><a href="/contact">Contact Me</a></li>
+                        
+                        
+                        
+                        <li class="menu-item "><a href="/search">Search</a></li>
+                        
+                    </ul>
+
+                    <p class="social-links">
+
+    <a href="https://twitter.com/metabrew" target="_blank">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path d="M459.37 151.716c.325 4.548.325 9.097.325 13.645 0 138.72-105.583 298.558-298.558 298.558-59.452 0-114.68-17.219-161.137-47.106 8.447.974 16.568 1.299 25.34 1.299 49.055 0 94.213-16.568 130.274-44.832-46.132-.975-84.792-31.188-98.112-72.772 6.498.974 12.995 1.624 19.818 1.624 9.421 0 18.843-1.3 27.614-3.573-48.081-9.747-84.143-51.98-84.143-102.985v-1.299c13.969 7.797 30.214 12.67 47.431 13.319-28.264-18.843-46.781-51.005-46.781-87.391 0-19.492 5.197-37.36 14.294-52.954 51.655 63.675 129.3 105.258 216.365 109.807-1.624-7.797-2.599-15.918-2.599-24.04 0-57.828 46.782-104.934 104.934-104.934 30.213 0 57.502 12.67 76.67 33.137 23.715-4.548 46.456-13.32 66.599-25.34-7.798 24.366-24.366 44.833-46.132 57.827 21.117-2.273 41.584-8.122 60.426-16.243-14.292 20.791-32.161 39.308-52.628 54.253z"/></svg>
+<!--
+Font Awesome Free 5.5.0 by @fontawesome - https://fontawesome.com
+License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License)
+-->
+    </a>
+
+    <a href="https://github.com/RJ" target="_blank">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg>
+<!--
+Font Awesome Free 5.5.0 by @fontawesome - https://fontawesome.com
+License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License)
+-->
+    </a>
+    
+    <a href="https://www.last.fm/user/RJ" target="_blank">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path d="M400 32H48C21.5 32 0 53.5 0 80v352c0 26.5 21.5 48 48 48h352c26.5 0 48-21.5 48-48V80c0-26.5-21.5-48-48-48zm-92.2 312.9c-63.4 0-85.4-28.6-97.1-64.1c-16.3-51-21.5-84.3-63-84.3c-22.4 0-45.1 16.1-45.1 61.2c0 35.2 18 57.2 43.3 57.2c28.6 0 47.6-21.3 47.6-21.3l11.7 31.9s-19.8 19.4-61.2 19.4c-51.3 0-79.9-30.1-79.9-85.8c0-57.9 28.6-92 82.5-92c73.5 0 80.8 41.4 100.8 101.9c8.8 26.8 24.2 46.2 61.2 46.2c24.9 0 38.1-5.5 38.1-19.1c0-19.9-21.8-22-49.9-28.6c-30.4-7.3-42.5-23.1-42.5-48c0-40 32.3-52.4 65.2-52.4c37.4 0 60.1 13.6 63 46.6l-36.7 4.4c-1.5-15.8-11-22.4-28.6-22.4c-16.1 0-26 7.3-26 19.8c0 11 4.8 17.6 20.9 21.3c32.7 7.1 71.8 12 71.8 57.5c.1 36.7-30.7 50.6-76.1 50.6z"/></svg>
+    </a>
+
+    <a href="/rss.xml" target="_blank">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><path d="M128.081 415.959c0 35.369-28.672 64.041-64.041 64.041S0 451.328 0 415.959s28.672-64.041 64.041-64.041 64.04 28.673 64.04 64.041zm175.66 47.25c-8.354-154.6-132.185-278.587-286.95-286.95C7.656 175.765 0 183.105 0 192.253v48.069c0 8.415 6.49 15.472 14.887 16.018 111.832 7.284 201.473 96.702 208.772 208.772.547 8.397 7.604 14.887 16.018 14.887h48.069c9.149.001 16.489-7.655 15.995-16.79zm144.249.288C439.596 229.677 251.465 40.445 16.503 32.01 7.473 31.686 0 38.981 0 48.016v48.068c0 8.625 6.835 15.645 15.453 15.999 191.179 7.839 344.627 161.316 352.465 352.465.353 8.618 7.373 15.453 15.999 15.453h48.068c9.034-.001 16.329-7.474 16.005-16.504z"/></svg>
+<!--
+Font Awesome Free 5.5.0 by @fontawesome - https://fontawesome.com
+License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License)
+-->
+    </a>
+    
+</p>
+
+                    </div><!-- .site-nav-inside -->
+                </div><!-- .site-nav-wrap -->
+            </nav><!-- .site-navigation -->
+
+            <!-- <div>
+                Foo bar
+
+            </div> -->
+
+        </div><!-- .site-header-inside -->
+    </div><!-- .site-header-wrap -->
+</header><!-- .site-header -->
+        <div id="content" class="site-content fadeInDown">
+            <div class="inner-wide">
+                    <main id="main" class="site-main">
+    
+        <article class="post-full inner">
+
+            <header class="post-header">
+                <div class="post-meta">
+                    Published <time class="post-date" datetime="2011-03-26">March 26,
+                        2011</time>
+                </div><!-- .post-meta -->
+                <h1 class="post-title">Erlang rebar tutorial: generating releases and upgrades</h1>
+                
+                <div class="post-tags">
+                     
+                    <a href='/tag/programming/'>programming</a>
+                    
+                     
+                    <a href='/tag/erlang/'>erlang</a>
+                    
+                     
+                    <a href='/tag/otp/'>otp</a>
+                    
+                     
+                    <a href='/tag/appup/'>appup</a>
+                    
+                     
+                    <a href='/tag/rebar/'>rebar</a>
+                    
+                     
+                    <a href='/tag/releasehandler/'>releasehandler</a>
+                    
+                    
+                </div>
+                
+            </header><!-- .post-header -->
+
+            
+            <div class="post-content">
+                <p>During my experiments with rebar, I made a simple example app for testing
+upgrades and releases. This article will walk you through using rebar to create
+an application, lay it out properly, package and deploy it, and create and
+install new versions without downtime.</p>
+
+<p>The code accompanying this article is in various branches of <a href="https://github.com/RJ/erlang_rebar_example_project">github.com/RJ/erlang_rebar_example_project</a>.</p>
+
+<blockquote>
+  <p><strong>N.B.</strong> The <a href="http://www.erlang.org/doc/design_principles/des_princ.html">OTP
+Design Principles</a> docs are a good place to start if you want an overview of
+the OTP approach to Erlang apps and releases. However, rebar isn’t (yet) part
+of OTP, so consider that background reading. Rebar makes things much easier.</p>
+</blockquote>
+
+<h2 id="creating-the-project">Creating the project</h2>
+
+<p>Build rebar:</p>
+
+<div class="language-console highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="gp">$</span><span class="w"> </span><span class="nb">cd</span> ~/src
+<span class="gp">$</span><span class="w"> </span>git clone https://github.com/basho/rebar.git
+<span class="go">Initialized empty Git repository in /tmp/rebar/.git/
+remote: Counting objects: 2651, done.
+remote: Compressing objects: 100% (1344/1344), done.
+remote: Total 2651 (delta 1540), reused 2227 (delta 1174)
+Receiving objects: 100% (2651/2651), 622.99 KiB | 495 KiB/s, done.
+Resolving deltas: 100% (1540/1540), done.
+</span><span class="gp">$</span><span class="w"> </span><span class="nb">cd </span>rebar <span class="o">&amp;&amp;</span> make
+<span class="go">...snip....
+</span><span class="gp">==&gt;</span><span class="w"> </span>rebar <span class="o">(</span>compile<span class="o">)</span>
+<span class="go">Congratulations! You now have a self-contained script called "rebar" in
+your current working directory. Place this script anywhere in your path
+and you can use rebar to build OTP-compliant apps.
+</span></code></pre></div></div>
+
+<p>Now we’ll make a project directory called “dummy_proj”, copy rebar into it, and use rebar to generate a skeleton application:</p>
+
+<div class="language-console highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="gp">$</span><span class="w"> </span><span class="nb">mkdir</span> <span class="nt">-p</span> ~/src/dummy_proj/apps
+<span class="gp">$</span><span class="w"> </span><span class="nb">cd</span> ~/src/dummy_proj/
+<span class="gp">$</span><span class="w"> </span><span class="nb">cp</span> ../rebar/rebar <span class="nb">.</span>
+<span class="gp">$</span><span class="w"> </span><span class="nb">cd </span>apps
+<span class="gp">$</span><span class="w"> </span>../rebar create-app <span class="nv">appid</span><span class="o">=</span>dummy_proj
+<span class="gp">==&gt;</span><span class="w"> </span>dummy_proj <span class="o">(</span>create-app<span class="o">)</span>
+<span class="go">Writing src/dummy_proj.app.src
+Writing src/dummy_proj_app.erl
+Writing src/dummy_proj_sup.erl
+</span></code></pre></div></div>
+
+<p>To the skeleton, I added a basic gen_server called dummy_proj_server, which just keeps track of the
+number of times it was poked, i.e. it holds some state, for demonstration purposes.</p>
+
+<p>I also renamed dummy_proj_app.erl to just dummy_proj.erl, and added a start/0 function, which is useful when starting the application during developement, when not running from a generated release.</p>
+
+<h3 id="compiling-with-rebar">Compiling with rebar</h3>
+
+<p>You need a rebar.conf, place this in the top-level project directory:</p>
+
+<div class="language-erlang highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{</span><span class="n">sub_dirs</span><span class="p">,</span> <span class="p">[</span>
+            <span class="s">"apps/dummy_proj"</span><span class="p">,</span>
+            <span class="s">"rel"</span>
+           <span class="p">]}.</span>
+<span class="p">{</span><span class="n">erl_opts</span><span class="p">,</span> <span class="p">[</span><span class="n">debug_info</span><span class="p">,</span> <span class="n">fail_on_warning</span><span class="p">]}.</span>
+
+<span class="p">{</span><span class="n">require_otp_vsn</span><span class="p">,</span> <span class="s">"R14"</span><span class="p">}.</span>
+</code></pre></div></div>
+
+<p>And now to compile, you do:</p>
+
+<div class="language-console highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="gp">$</span><span class="w"> </span>./rebar compile
+<span class="gp">==&gt;</span><span class="w"> </span>dummy_proj <span class="o">(</span>compile<span class="o">)</span>
+<span class="go">Compiled src/dummy_proj_sup.erl
+Compiled src/dummy_proj.erl
+Compiled src/dummy_proj_server.erl
+</span><span class="gp">==&gt;</span><span class="w"> </span>rel <span class="o">(</span>compile<span class="o">)</span>
+<span class="gp">==&gt;</span><span class="w"> </span>dummy_proj <span class="o">(</span>compile<span class="o">)</span>
+</code></pre></div></div>
+
+<p>Note that you now have .beam files in apps/dummy_proj/ebin/, and the .app.src generated apps/dummy_proj/ebin/dummy_proj.app for you, with a complete modules list.</p>
+
+<blockquote>
+  <p><strong>N.B.</strong> I made a simple Makefile that calls ‘rebar compile’, because I’m too used to typing make. Find it in the git repo.</p>
+</blockquote>
+
+<h3 id="running-your-app-development">Running your app (development)</h3>
+
+<p>Here’s how you can start the application (and sasl, for nice error reporting):</p>
+
+<div class="language-console highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="gp">$</span><span class="w"> </span>erl <span class="nt">-pa</span> apps/<span class="k">*</span>/ebin <span class="nt">-boot</span> start_sasl <span class="nt">-s</span> dummy_proj
+<span class="go">...snip...
+=INFO REPORT==== 16-Mar-2011::14:17:04 ===
+Starting dummy_proj application...
+
+=PROGRESS REPORT==== 16-Mar-2011::14:17:04 ===
+          supervisor: {local,dummy_proj_sup}
+</span><span class="gp">             started: [{pid,&lt;0.45.0&gt;</span><span class="o">}</span>,
+<span class="go">                       {name,dummy_proj_server},
+                       {mfargs,{dummy_proj_server,start_link,[]} },
+                       {restart_type,permanent},
+                       {shutdown,5000},
+                       {child_type,worker}]
+
+=PROGRESS REPORT==== 16-Mar-2011::14:17:04 ===
+         application: dummy_proj
+          started_at: nonode@nohost
+Eshell V5.8.1  (abort with ^G)
+</span><span class="gp">1&gt;</span><span class="w"> </span>dummy_proj_server:num_pokes<span class="o">()</span><span class="nb">.</span>
+<span class="go">0
+</span><span class="gp">2&gt;</span><span class="w"> </span>dummy_proj_server:poke<span class="o">()</span><span class="nb">.</span>     
+<span class="go">{ok,1}
+</span><span class="gp">3&gt;</span><span class="w"> </span>dummy_proj_server:poke<span class="o">()</span><span class="nb">.</span>
+<span class="go">{ok,2}
+</span><span class="gp">4&gt;</span><span class="w"> </span>dummy_proj_server:num_pokes<span class="o">()</span><span class="nb">.</span>
+<span class="go">2
+</span><span class="gp">5&gt;</span><span class="w">  
+</span></code></pre></div></div>
+
+<p>Now you have a nice sensibly structured Erlang project that you can compile with rebar. Exit the VM with q(). and let’s use rebar to package it up, so you can deploy it on a production box.</p>
+
+<h2 id="generating-your-first-release">Generating your first release</h2>
+
+<p>When you generate a release with rebar, and indeed if you use the erlang tools manually (not recommended, just use rebar), you end up with the whole Erlang VM and required libraries packaged up under one directory.</p>
+
+<p>This means you have a self-contained environment containing Erlang, the OTP libraries you need, and all your application code and dependencies. You can just tar it up, ship it over to another machine (of the same architecture, eg GNU/Linux 64-bit), and run it there.</p>
+
+<h3 id="creating-a-node-config">Creating a node config</h3>
+
+<p>Use rebar to create a default node configuration in a rel subdirectory:</p>
+
+<div class="language-console highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="gp">$</span><span class="w"> </span><span class="nb">mkdir </span>rel
+<span class="gp">$</span><span class="w"> </span><span class="nb">cd </span>rel/
+<span class="gp">$</span><span class="w"> </span>../rebar create-node <span class="nv">nodeid</span><span class="o">=</span>dummynode
+<span class="gp">==&gt;</span><span class="w"> </span>rel <span class="o">(</span>create-node<span class="o">)</span>
+<span class="go">Writing reltool.config
+Writing files/erl
+Writing files/nodetool
+Writing files/dummynode
+Writing files/app.config
+Writing files/vm.args
+</span></code></pre></div></div>
+
+<p>You need to edit reltool.config a little; point to to your apps directory, and
+make sure the version number matches your .app.src file.
+You should also add dummy_app to the list of applications that are started as part of the
+release. 
+Here’s <a href="https://github.com/RJ/erlang_rebar_example_project/blob/v1/rel/reltool.config" target="v1rel">reltool.conf from my v1 tag</a></p>
+
+<h3 id="generating-the-release">Generating the release</h3>
+
+<p>Back in the top level directory, just run:</p>
+
+<div class="language-console highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="gp">$</span><span class="w"> </span>./rebar generate
+<span class="gp">==&gt;</span><span class="w"> </span>rel <span class="o">(</span>generate<span class="o">)</span>
+</code></pre></div></div>
+
+<p>Now have a look in rel/dummynode. This is the release directory containing everything you need to run your application.</p>
+
+<p>We are going to be creating more releases later, so rename rel/dummynode to rel/dummynode_first, and then launch it using the handy script that rebar created for us:</p>
+
+<div class="language-console highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="gp">$</span><span class="w"> </span><span class="nb">cd </span>rel/dummynode_first
+<span class="gp">$</span><span class="w"> </span>./bin/dummynode console
+<span class="go">...snip...
+Erlang R14B (erts-5.8.1) [source] [64-bit] [smp:8:8] [rq:8] [async-threads:5] [hipe] [kernel-poll:true
+=INFO REPORT==== 16-Mar-2011::13:29:59 ===
+Starting dummy_proj application...
+Eshell V5.8.1  (abort with ^G)
+</span><span class="gp">(dummynode@127.0.0.1)1&gt;</span><span class="w"> 
+</span><span class="gp">(dummynode@127.0.0.1)1&gt;</span><span class="w"> </span>dummy_proj_server:num_pokes<span class="o">()</span><span class="nb">.</span>
+<span class="go">0
+</span><span class="gp">(dummynode@127.0.0.1)2&gt;</span><span class="w"> </span>dummy_proj_server:poke<span class="o">()</span><span class="nb">.</span>     
+<span class="go">{ok,1}
+</span><span class="gp">(dummynode@127.0.0.1)3&gt;</span><span class="w"> </span>dummy_proj_server:poke<span class="o">()</span><span class="nb">.</span>
+<span class="go">{ok,2}
+</span><span class="gp">(dummynode@127.0.0.1)4&gt;</span><span class="w"> </span>dummy_proj_server:num_pokes<span class="o">()</span><span class="nb">.</span>
+<span class="go">2
+</span><span class="gp">(dummynode@127.0.0.1)5&gt;</span><span class="w"> 
+</span></code></pre></div></div>
+
+<p>Now the release is running, we never want to have to restart it ever again, so open up another console because we want to leave that running whilst we work on version 2.</p>
+
+<blockquote>
+  <p><strong>N.B.</strong> In a production environment, you would start with “./bin/dummynode start” so it runs in the background, and use “dummynode attach” to get a console.</p>
+</blockquote>
+
+<p>Check the <a href="https://github.com/RJ/erlang_rebar_example_project/blob/v1/">‘v1 branch’</a> on github for code up to this point.</p>
+
+<h2 id="upgrading-to-version-2">Upgrading to Version 2</h2>
+
+<p>Add the poke_twice() function to dummy_proj_server.</p>
+
+<p>Change the version from “1” to “2”, in both apps/dummy_proj.app.src and rel/reltool.conf.</p>
+
+<p>Here’s the github <a href="https://github.com/RJ/erlang_rebar_example_project/compare/v1...v2#diff-3">diff between v1…v2</a></p>
+
+<p>Erlang application version numbers can be any string - I tend to use a date format with letter: “20110316a”, but you can use any scheme you want. 
+I tag releases in git with the same version as the erlang application. 
+We’ll just use “1”, “2”, “3” here for simplicity.</p>
+
+<blockquote>
+  <p><strong>N.B.</strong> If you use <code>{vsn, git}</code> as the version in your .app.src, rebar will get the version string from the closest git tag.</p>
+</blockquote>
+
+<p>Now build the new version:</p>
+<div class="language-console highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="gp">$</span><span class="w"> </span>./rebar compile
+<span class="gp">$</span><span class="w"> </span>./rebar generate
+</code></pre></div></div>
+
+<p>So now you have rel/dummy_proj, containing a full release (VM included) of version 2. 
+If you don’t care about online-upgrades, you could just kill your version 1 VM, and start version 2 from this new release directory.</p>
+
+<h3 id="writing-the-appup-upgrade-instructions">Writing the .appup upgrade instructions</h3>
+
+<p>In order to make an upgrade, you must have a valid .appup file. 
+This tells the erlang release_handler how to upgrade and downgrade between specific versions of your application.</p>
+
+<p>Rebar has a (relatively new) command called ‘generate-appups’. 
+I’ll show how it works, but ultimately we’ll write our .appup manually, and keep it in our project directory (in git).</p>
+
+<div class="language-console highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="gp">$</span><span class="w"> </span>./rebar generate-appups <span class="nv">previous_release</span><span class="o">=</span>dummynode_first
+<span class="gp">==&gt;</span><span class="w"> </span>rel <span class="o">(</span>generate-appups<span class="o">)</span>
+<span class="go">Generated appup for dummy_proj
+Appup generation complete
+</span><span class="gp">$</span><span class="w"> </span><span class="nb">cat</span> ./rel/dummynode/lib/dummy_proj-2/ebin/dummy_proj.appup
+<span class="go">%% appup generated for dummy_proj by rebar ("2011/03/16 13:37:43")¬                                   
+{"2", [{"1", [{update,dummy_proj_server,{advanced,[]}}]}], [{"1", []}]}.¬
+</span></code></pre></div></div>
+
+<p>Get rid of the autogenerated one, and create the appup file manually, in apps/dummy_proj/ebin/dummy_proj.appup:</p>
+
+<div class="language-erlang highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{</span><span class="s">"2"</span><span class="p">,</span> 
+    <span class="c">%% Upgrade instructions from 1 to 2
+</span>    <span class="p">[{</span><span class="s">"1"</span><span class="p">,</span> <span class="p">[</span>
+        <span class="p">{</span><span class="nb">load_module</span><span class="p">,</span> <span class="n">dummy_proj_server</span><span class="p">}</span>    
+    <span class="p">]}],</span> 
+    <span class="c">%% Downgrade instructions from 2 to 1
+</span>    <span class="p">[{</span><span class="s">"1"</span><span class="p">,[</span>
+        <span class="p">{</span><span class="nb">load_module</span><span class="p">,</span> <span class="n">dummy_proj_server</span><span class="p">}</span>    
+    <span class="p">]}]</span>
+<span class="p">}.</span>
+</code></pre></div></div>
+
+<p>This .appup contains instructions for upgrading and downgrading between versions “2” and “1”.
+Typically the downgrade instructions are the reverse of the upgrade instructions. 
+Since we just added a function to our server process, without changing any internal state, we can just use load_module instructions. The Appup Cookbook explains the various upgrade instructions in depth.</p>
+
+<p>Now generate again, overwriting the previous version 2. This will just make sure the .appup is part of the release directory:</p>
+
+<div class="language-console highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="gp">$</span><span class="w"> </span>./rebar generate <span class="nt">-f</span>
+</code></pre></div></div>
+
+<p>And now, create the upgrade package:</p>
+
+<div class="language-console highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="gp">$</span><span class="w"> </span>./rebar generate-upgrade <span class="nv">previous_release</span><span class="o">=</span>dummynode_first
+<span class="gp">==&gt;</span><span class="w"> </span>rel <span class="o">(</span>generate-upgrade<span class="o">)</span>
+<span class="go">dummynode_2 upgrade package created
+</span></code></pre></div></div>
+
+<p>The generate-upgrade command will look for rel/dummynode as the current version, and rel/dummynode_first as the previous version. 
+It should have created the upgrade .tar.gz in rel:</p>
+
+<div class="language-console highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="gp">$</span><span class="w"> </span><span class="nb">ls</span> <span class="nt">-lh</span> rel/
+<span class="go">total 15M
+drwxr-xr-x 8 rj rj 4.0K 2011-03-16 13:42 dummynode
+drwxr-xr-x 8 rj rj 4.0K 2011-03-16 13:29 dummynode_first
+-rw-r--r-- 1 rj rj  14M 2011-03-16 13:45 dummynode_2.tar.gz
+drwxr-xr-x 2 rj rj 4.0K 2011-03-16 13:11 files
+-rw-r--r-- 1 rj rj  922 2011-03-16 13:36 reltool.config
+</span></code></pre></div></div>
+
+<h3 id="installing-the-upgrade-package">Installing the upgrade package</h3>
+
+<p>You should still have the VM running from dummynode_first. 
+Make sure you called poke(), so the internal state is something other than the default. 
+This will help illustrate that the upgrade worked seamlessly.</p>
+
+<p>Copy the upgrade package to the releases directory of the running release:</p>
+
+<div class="language-console highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="gp">$</span><span class="w"> </span><span class="nb">cp </span>rel/dummynode_2.tar.gz rel/dummynode_first/releases
+</code></pre></div></div>
+
+<p>Now, at the Erlang console where version 1 is running, we use release_handler to check which releases are currently available, and install our new one:</p>
+
+<div class="language-console highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="gp">(dummynode@127.0.0.1)5&gt;</span><span class="w"> </span>release_handler:which_releases<span class="o">()</span><span class="nb">.</span>
+<span class="go">[{"dummynode","1",[],permanent}]
+</span><span class="gp">(dummynode@127.0.0.1)6&gt;</span><span class="w"> </span>release_handler:unpack_release<span class="o">(</span><span class="s2">"dummynode_2"</span><span class="o">)</span><span class="nb">.</span>
+<span class="go">{ok,"2"}
+</span><span class="gp">(dummynode@127.0.0.1)7&gt;</span><span class="w"> </span>release_handler:install_release<span class="o">(</span><span class="s2">"2"</span><span class="o">)</span><span class="nb">.</span>
+<span class="go">{ok,"1",[]}   
+</span><span class="gp">(dummynode@127.0.0.1)8&gt;</span><span class="w"> </span>dummy_proj_server:num_pokes<span class="o">()</span><span class="nb">.</span>
+<span class="go">2
+</span><span class="gp">(dummynode@127.0.0.1)9&gt;</span><span class="w"> </span>dummy_proj_server:poke_twice<span class="o">()</span><span class="nb">.</span>
+<span class="go">{ok,4}
+</span><span class="gp">(dummynode@127.0.0.1)10&gt;</span><span class="w"> </span>dummy_proj_server:num_pokes<span class="o">()</span><span class="nb">.</span> 
+<span class="go">4
+</span><span class="gp">(dummynode@127.0.0.1)11&gt;</span><span class="w"> </span>release_handler:which_releases<span class="o">()</span><span class="nb">.</span>
+<span class="go">[{"dummynode","2",
+  ["kernel-2.14.1","stdlib-1.17.1","dummy_proj-2",
+   "sasl-2.1.9.2","compiler-4.7.1","crypto-2.0.1",
+   "syntax_tools-1.6.6","edoc-0.7.6.7","et-1.4.1","gs-1.5.13",
+   "hipe-3.7.7","inets-5.5","mnesia-4.4.15","observer-0.9.8.3",
+   "public_key-0.8","runtime_tools-1.8.4.1","ssl-4.0.1",
+   "tools-2.6.6.1","webtool-0.8.7","wx-0.98.7","xmerl-1.2.6"],
+  current},
+ {"dummynode","1",[],permanent}]
+</span></code></pre></div></div>
+
+<p>The upgrade worked; you can see that the num_pokes() was preserved, and that the new poke_twice() function is available.</p>
+
+<p>release_handler shows our version 2 as “current”, and the original version 1 as “permanent”.
+This means that although version 2 is running right now, if you restart the VM, version “1” will be booted up.</p>
+
+<p>If you are happy with the upgrade, make it permanent, meaning it will boot instead of version 1 if you restart the VM:</p>
+
+<div class="language-console highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="gp">(dummynode@127.0.0.1)12&gt;</span><span class="w"> </span>release_handler:make_permanent<span class="o">(</span><span class="s2">"2"</span><span class="o">)</span><span class="nb">.</span>
+</code></pre></div></div>
+
+<p>Check the <a href="https://github.com/RJ/erlang_rebar_example_project/blob/v2/">‘v2 branch’</a> on github for code up to this point.</p>
+
+<h2 id="version-3-and-beyond">Version 3 and beyond</h2>
+
+<p>The upgrade from v1 to v2 was simple: we just added a fun without changing the
+internal #state{} record.</p>
+
+<p>Erlang .appup files can do all sorts of clever stuff, allowing you to rewire
+your running applications during the upgrade process.</p>
+
+<p>The <a href="http://www.erlang.org/doc/design_principles/appup_cookbook.html">Appup
+Cookbook</a> details the various commands you can put in your .appup.</p>
+
+<p>Let’s do an upgrade with a more complex appup - we’ll change the #state record in the dummy_proj_server process.</p>
+
+<p>For version 3, we’ll track prods as well as pokes, which will require another
+field in the state record.</p>
+
+<p>Here’s the github <a href="https://github.com/RJ/erlang_rebar_example_project/compare/v2...v3#diff-2">diff between v2…v3</a>.</p>
+
+<p>Check out the addition to .appup for this release:</p>
+
+<div class="language-erlang highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{</span><span class="s">"3"</span><span class="p">,</span> 
+    <span class="c">%% Upgrade instructions
+</span>    <span class="p">[{</span><span class="s">"2"</span><span class="p">,</span> <span class="p">[</span>
+        <span class="p">{</span><span class="n">update</span><span class="p">,</span><span class="n">dummy_app_server</span><span class="p">,{</span><span class="n">advanced</span><span class="p">,[</span><span class="n">from2to3</span><span class="p">]}}</span>
+    <span class="p">]}],</span> 
+    <span class="c">%% Downgrade instructions
+</span>    <span class="p">[{</span><span class="s">"2"</span><span class="p">,[</span>
+        <span class="p">{</span><span class="n">update</span><span class="p">,</span><span class="n">dummy_app_server</span><span class="p">,{</span><span class="n">advanced</span><span class="p">,[</span><span class="n">from3to2</span><span class="p">]}}</span>
+    <span class="p">]}]</span>
+<span class="p">}.</span>
+</code></pre></div></div>
+
+<p>This {update..} directive will result in the code_change function being called
+on the dummy_app_server. The purpose of code_change is to change the State from
+the old (v2) format, to the new (v3) format.</p>
+
+<p>Although it’s not strictly necessary, I pass ‘from2to3’ as the ‘Extra’ field in
+the code_change call. This can be pattern matched on, and makes it clear in
+your code_change code exactly what version upgrade is expected.</p>
+
+<h3 id="packaging-and-upgrading-to-v3">Packaging and upgrading to v3</h3>
+
+<p>Move the generated release dir for v2:</p>
+<div class="language-console highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="gp">$</span><span class="w"> </span><span class="nb">mv </span>rel/dummynode rel/dummynode_2
+</code></pre></div></div>
+
+<p>Compile and generate for v3, then create the upgrade package:</p>
+<div class="language-console highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="gp">$</span><span class="w"> </span>./rebar compile
+<span class="gp">$</span><span class="w"> </span>./rebar generate
+<span class="gp">$</span><span class="w"> </span>./rebar generate-upgrade <span class="nv">previous_release</span><span class="o">=</span>dummynode_2
+</code></pre></div></div>
+
+<blockquote>
+  <p><strong>N.B.</strong> You need to provide the full, standalone generated release dir
+as the previous_release, you can’t use dummynode_first, even though that
+contains version 2 of your release.</p>
+</blockquote>
+
+<p>As before, copy the upgrade package to the releases directory of the running release:</p>
+
+<div class="language-console highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="gp">$</span><span class="w"> </span><span class="nb">cp </span>rel/dummynode_3.tar.gz rel/dummynode_first/releases
+</code></pre></div></div>
+
+<p>Now, at the Erlang console where you upgraded v1 to v2:</p>
+
+<div class="language-console highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="gp">(dummynode@127.0.0.1)12&gt;</span><span class="w"> </span>release_handler:unpack_release<span class="o">(</span><span class="s2">"dummynode_3"</span><span class="o">)</span><span class="nb">.</span>
+<span class="go">{ok,"3"}
+</span><span class="gp">(dummynode@127.0.0.1)13&gt;</span><span class="w"> </span>release_handler:install_release<span class="o">(</span><span class="s2">"3"</span><span class="o">)</span><span class="nb">.</span>
+<span class="go">{ok,"2",[]}
+</span></code></pre></div></div>
+
+<h3 id="congratulations">Congratulations</h3>
+
+<p>Now you can deploy hot-code-upgrades the proper OTP way. Ideal for complex or
+large upgrades that change internal state or do require special upgrade hooks.
+Read the Appup Cookbook a few times, and <strong>test your upgrade packages in
+a staging environment before deploying</strong>. You can just tar up and copy the live
+environment to your staging box, to get an exact clone of the production system
+to test upgrades against.</p>
+
+<blockquote>
+  <p><strong>Warning: a current issue with downgrades</strong></p>
+
+  <p>To downgrade, you just install a previous release. However, there is currently
+a bug where release_handler chokes during downgrades to the first version,
+because of a discrepancy in the naming of .boot files in the release.
+release_handler has start.boot hardcoded, but rebar will generate appname.boot,
+with start.boot as a symlink. If you need to do downgrades, test this carefully
+before deploying; you may need to manually rename the boot file.</p>
+</blockquote>
+
+<h2 id="cowboying-out-quick-fixes">Cowboying out quick fixes</h2>
+
+<p>Appup files and generating releases is rather heavyweight. Here’s an overview
+of the process I’m using on <a href="https://www.irccloud.com/">IRCCloud</a> at the moment</p>
+
+<h4 id="complex-upgrades-are-proper-releases-with-appup">Complex upgrades are proper releases, with .appup</h4>
+
+<p>No way around it; bit of a pain to create and test, but glorious when you pull off a complex upgrade with zero downtime.
+Releases are tagged in git with the datetime and letter version, eg:
+v20110324a.
+If I do a second release that day, v20110324b.</p>
+
+<h4 id="hotfixes-preserve-my-sanity">‘Hotfixes’ preserve my sanity</h4>
+
+<p>If I make a quick fix that simply requires reloading a module with no risk of
+instability, I do the following:</p>
+
+<ol>
+  <li>Reset code to currently deployed tag, egv 20110324a</li>
+  <li>Write the fix</li>
+  <li>Commit as v200110324a-hotfix1</li>
+  <li>Build this version of the specific module that’s changed, and copy it into
+the production environment, eg to:
+/somewhere/dummyapp/lib/dummyapp-20110324a/ebin/</li>
+  <li>Reload the module, eg by using l(module_name). at the shell.</li>
+</ol>
+
+<p>It’s of vital importance to have a repeatable process, so you know exactly which version of
+code (ie, the git tag) is currently running in production. If you can’t be
+sure, then it’s much harder to write successful upgrade code later on.</p>
+
+<p>This process gives a reasonable balance between periodic ‘proper’ releases,
+during which any complex changes are made that rewire internal state, and quick
+fixes that just require a module reload.</p>
+
+<h2 id="pitfalls-to-avoid">Pitfalls to avoid</h2>
+
+<p>In the IRCCloud app, there’s one place that I don’t use a supervisor, but wish
+I had; the user process acts as a sort of supervisor for connection processes, 
+because I needed exponential backoff / more control over restarting crashed children.</p>
+
+<p>Don’t do that. release_handler isn’t aware of the child processes I spawn
+myself, so I can’t use the normal appup process to call code_change.</p>
+
+
+            </div>
+            <footer class="post-footer">
+               <hr>
+            </footer>
+            
+<section id="comments-area" class="comments-area">
+
+<script src="https://utteranc.es/client.js"
+    repo="RJ/www.metabrew.com"
+    issue-term="pathname"
+    label="comment"
+    theme="github-light"
+    crossorigin="anonymous"
+    async>
+</script>
+
+</section>
+
+        </article>
+        
+
+        <section class="read-next inner">
+            <h2 class="read-next-title">Read Next</h2>
+            
+            <article class="post">
+                <header class="post-header">
+                    <div class="post-meta">
+                        <time class="published" datetime="September 18, 2010">September 18, 2010</time>
+                    </div>
+                    <h3 class="post-title"><a href="/article/erlangotp-releases-rebar-release_handler-appup-etc">Erlang/OTP releases: rebar, release_handler, .appup, etc</a></h3>
+                    <p class="post-tags">
+                        
+                        
+                        
+                        <a href='/tag/programming/'>Programming</a>
+                        
+                        
+                        
+                        <a href='/tag/erlang/'>Erlang</a>
+                        
+                        
+                        
+                        <a href='/tag/hacks/'>Hacks</a>
+                        
+                        
+                        
+                        <a href='/tag/mochiweb/'>Mochiweb</a>
+                        
+                        
+                        
+                        <a href='/tag/irc/'>Irc</a>
+                        
+                        
+                        
+                        <a href='/tag/irccloud/'>Irccloud</a>
+                        
+                        
+                        
+                        <a href='/tag/otp/'>Otp</a>
+                        
+                        
+                        
+                        <a href='/tag/appup/'>Appup</a>
+                        
+                        
+                        
+                        <a href='/tag/sysops/'>Sysops</a>
+                        
+                        
+                        
+                        <a href='/tag/deployment/'>Deployment</a>
+                        
+                        
+                        
+                        <a href='/tag/irccloud/'>Irccloud</a>
+                        
+                        
+                        
+                    </p>
+                </header>
+            </article>
+            
+            
+            <article class="post">
+                <header class="post-header">
+                    <div class="post-meta">
+                        <time class="published" datetime="July 11, 2011">July 11, 2011</time>
+                    </div>
+                    <h3 class="post-title"><a href="/article/bigwig-erlang-webtool-spawnfest">BigWig: A better Erlang webtool (spawnfest entry)</a></h3>
+                    <p class="post-tags">
+                        
+                        
+                        
+                        <a href='/tag/programming/'>Programming</a>
+                        
+                        
+                        
+                        <a href='/tag/erlang/'>Erlang</a>
+                        
+                        
+                        
+                        <a href='/tag/webtool/'>Webtool</a>
+                        
+                        
+                        
+                        <a href='/tag/spawnfest/'>Spawnfest</a>
+                        
+                        
+                        
+                        <a href='/tag/etop/'>Etop</a>
+                        
+                        
+                        
+                        <a href='/tag/appmon/'>Appmon</a>
+                        
+                        
+                        
+                        <a href='/tag/sasl/'>Sasl</a>
+                        
+                        
+                        
+                    </p>
+                </header>
+            </article>
+            
+        </section><!-- .read-next -->
+
+        <hr>
+
+        <!-- Create a sorted array of tags -->
+         
+        <section class="tagcloud inner">
+            <h2 class="tagcloud-title">Tags</h2>
+            <div class="tag-links">
+                
+                <a href='/tag/appmon/'>appmon</a>
+                
+                <a href='/tag/appup/'>appup</a>
+                
+                <a href='/tag/bash/'>bash</a>
+                
+                <a href='/tag/c/'>c</a>
+                
+                <a href='/tag/caching/'>caching</a>
+                
+                <a href='/tag/cnode/'>cnode</a>
+                
+                <a href='/tag/comet/'>comet</a>
+                
+                <a href='/tag/databases/'>databases</a>
+                
+                <a href='/tag/deployment/'>deployment</a>
+                
+                <a href='/tag/dht/'>dht</a>
+                
+                <a href='/tag/driver/'>driver</a>
+                
+                <a href='/tag/ejabberd/'>ejabberd</a>
+                
+                <a href='/tag/erlang/'>erlang</a>
+                
+                <a href='/tag/etop/'>etop</a>
+                
+                <a href='/tag/hack/'>hack</a>
+                
+                <a href='/tag/hacks/'>hacks</a>
+                
+                <a href='/tag/hackspace/'>hackspace</a>
+                
+                <a href='/tag/hashing/'>hashing</a>
+                
+                <a href='/tag/http/'>http</a>
+                
+                <a href='/tag/irc/'>irc</a>
+                
+                <a href='/tag/irccloud/'>irccloud</a>
+                
+                <a href='/tag/java/'>java</a>
+                
+                <a href='/tag/kernel/'>kernel</a>
+                
+                <a href='/tag/ketama/'>ketama</a>
+                
+                <a href='/tag/lastfm/'>lastfm</a>
+                
+                <a href='/tag/libevent/'>libevent</a>
+                
+                <a href='/tag/life/'>life</a>
+                
+                <a href='/tag/london/'>london</a>
+                
+                <a href='/tag/memcached/'>memcached</a>
+                
+                <a href='/tag/mnesia/'>mnesia</a>
+                
+                <a href='/tag/mochiweb/'>mochiweb</a>
+                
+                <a href='/tag/netcat/'>netcat</a>
+                
+                <a href='/tag/networking/'>networking</a>
+                
+                <a href='/tag/nosql/'>nosql</a>
+                
+                <a href='/tag/otp/'>otp</a>
+                
+                <a href='/tag/php/'>php</a>
+                
+                <a href='/tag/playdar/'>playdar</a>
+                
+                <a href='/tag/programming/'>programming</a>
+                
+                <a href='/tag/rebar/'>rebar</a>
+                
+                <a href='/tag/releasehandler/'>releasehandler</a>
+                
+                <a href='/tag/rewrite/'>rewrite</a>
+                
+                <a href='/tag/sasl/'>sasl</a>
+                
+                <a href='/tag/scalability/'>scalability</a>
+                
+                <a href='/tag/spawnfest/'>spawnfest</a>
+                
+                <a href='/tag/ssh/'>ssh</a>
+                
+                <a href='/tag/streaming/'>streaming</a>
+                
+                <a href='/tag/sysops/'>sysops</a>
+                
+                <a href='/tag/talk/'>talk</a>
+                
+                <a href='/tag/tcp/'>tcp</a>
+                
+                <a href='/tag/thrift/'>thrift</a>
+                
+                <a href='/tag/uncategorized/'>uncategorized</a>
+                
+                <a href='/tag/webtool/'>webtool</a>
+                
+                <a href='/tag/xmpp/'>xmpp</a>
+                
+                <a href='/tag/yaws/'>yaws</a>
+                
+            </div><!-- .tag-links -->
+        </section><!-- .tagcloud -->
+
+    </main><!-- .site-main -->
+
+                
+
+                <footer id="colophon" class="site-footer">
+    <p class="site-info inner">
+        Copyright <a href="#">Metabrew.com - Richard Jones</a> &copy; 2021.
+        <br>        
+
+I release all embedded source code in my blog articles to the public domain, unless otherwise specified.
+
+Article text released under the <a href="http://creativecommons.org/licenses/by-nc/4.0/">Creative Commons Attribution-NonCommercial 4.0 International License</a>.
+
+You don't need to ask me if you want to post a translated version of my work on your own website, but you must link back here as per the above license. 
+
+
+    </p>
+    <a id="back-to-top" class="back-to-top" href="#page">
+        <span class="icon-arrow-up" aria-hidden="true"></span>
+        <span class="screen-reader-text">Back to top</span>
+    </a>
+</footer><!-- .site-footer -->
+            </div><!-- .inner-wide -->
+        </div><!-- .site-content -->
+    </div><!-- .site -->
+
+    
+    <!-- Javascript Assets -->
+    <script src="/assets/js/jquery-3.3.1.min.js"></script>
+    <script src="/assets/js/plugins.js"></script>
+    <script src="/assets/js/custom.js"></script>
+
+</body>
+
+</html>

@@ -1,0 +1,30 @@
+#!/bin/bash
+# run like so: while [ 1 ]; do nc -vlp 8080 -c './youtube_httpd.sh' ; sleep 1 ; done
+read method url version
+method="${method%$CR}"
+url="${url%$CR}"
+version="${version%$CR}"
+echo -ne "HTTP/1.0 200 OK\r\nContent-type: audio/mpeg\r\n\r\n"
+
+TERM=`echo "$url" | sed 's/^\///g'`
+
+URL=`lynx --source "http://gdata.youtube.com/feeds/api/videos?q=$TERM&orderby=published&start-index=1&max-results=10&v=2" \
+| grep -E -o 'http:\/\/www.youtube.com\/watch\?v=[a-zA-Z0-9]+' \
+| head -n 1`
+
+VID=`echo $URL | sed 's/.*=//'`
+
+TID=`lynx --source "$URL" | grep -E -o ', "t": "([^"]+)"' \
+    | sed -e 's/.*: "//' -e 's/"$//'`
+
+#echo "Youtube url: $URL"
+#echo "Video ID: $VID"
+#echo "Token: $TID"
+
+VIDURL="http://www.youtube.com/get_video?video_id=$VID&t=$TID&el=detailpage&ps="
+
+# you'll need ffmpeg and whatnot installed:
+wget -q -O- "$VIDURL" \
+ | ffmpeg -i - -acodec copy -f mp3 - 2>/dev/null
+
+
