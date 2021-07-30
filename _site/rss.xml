@@ -5,8 +5,8 @@
     <description>Logbook / blog / devlog</description>
     <link>/</link>
     <atom:link href="/feed.xml" rel="self" type="application/rss+xml"/>
-    <pubDate>Fri, 30 Jul 2021 12:04:23 +0100</pubDate>
-    <lastBuildDate>Fri, 30 Jul 2021 12:04:23 +0100</lastBuildDate>
+    <pubDate>Fri, 30 Jul 2021 15:51:54 +0100</pubDate>
+    <lastBuildDate>Fri, 30 Jul 2021 15:51:54 +0100</lastBuildDate>
     <generator>Jekyll v4.2.0</generator>
     
       <item>
@@ -17,7 +17,7 @@
 
 &lt;hr /&gt;
 
-&lt;p&gt;In my twindling free time, I am learning Rust – specifically because I want to target WASM to build a simple multiplayer game that runs in the browser. Using UDP, via WebRTC hacks. With excellent rollback-netcode for responsive competitive play.. So not really that simple I guess 🤷🏼‍♂️.&lt;/p&gt;
+&lt;p&gt;In my limited free time, I am learning Rust – specifically because I want to target WASM to build a simple multiplayer game that runs in the browser. Using UDP, via WebRTC hacks. With excellent rollback-netcode for responsive competitive play.. So not really that simple I guess 🤷🏼‍♂️.&lt;/p&gt;
 
 &lt;blockquote class=&quot;twitter-tweet&quot;&gt;&lt;p lang=&quot;en&quot; dir=&quot;ltr&quot;&gt;Bit of exploratory &lt;a href=&quot;https://twitter.com/hashtag/rustlang?src=hash&amp;amp;ref_src=twsrc%5Etfw&quot;&gt;#rustlang&lt;/a&gt; &lt;a href=&quot;https://twitter.com/hashtag/gamedev?src=hash&amp;amp;ref_src=twsrc%5Etfw&quot;&gt;#gamedev&lt;/a&gt; fun. Using &lt;a href=&quot;https://twitter.com/BevyEngine?ref_src=twsrc%5Etfw&quot;&gt;@BevyEngine&lt;/a&gt; with &lt;a href=&quot;https://twitter.com/dimforge?ref_src=twsrc%5Etfw&quot;&gt;@dimforge&lt;/a&gt;&amp;#39;s Rapier physics engine, and bevy_prototype_lyon to render. Compiles to webassembly too, which is neat. &lt;a href=&quot;https://t.co/Kge8CtgGar&quot;&gt;pic.twitter.com/Kge8CtgGar&lt;/a&gt;&lt;/p&gt;&amp;mdash; Richard Jones (RJ) (@metabrew) &lt;a href=&quot;https://twitter.com/metabrew/status/1399356281446711298?ref_src=twsrc%5Etfw&quot;&gt;May 31, 2021&lt;/a&gt;&lt;/blockquote&gt;
 &lt;script async=&quot;&quot; src=&quot;https://platform.twitter.com/widgets.js&quot; charset=&quot;utf-8&quot;&gt;&lt;/script&gt;
