@@ -1,13 +1,14 @@
 --- 
 layout: post
-published: true
+published: false
+draft: true
 title: "Home Automation Journey"
 permalink: /article/uk-home-automation-fettling
 tags: 
 - homeautomation
 ---
 
-## Home Assistant or bust
+## HA DRAFT
 
 and everything has to talk locally to it. most HA stuff lives on a vlan which default denies internet access.
 expose local ntp server.
