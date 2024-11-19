@@ -107,4 +107,9 @@ https://community.home-assistant.io/t/fibaro-swipe-gesture-sensor-fggc001-behind
 Ceiling mount google home. dissatisfied with G. want open source.
 
 
+## postbox poe camera, onif, hass announcer
+
+## zone valve nonsense
+
+## 
 
