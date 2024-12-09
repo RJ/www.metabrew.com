@@ -101,6 +101,13 @@ code {
   font-size: 0.88889rem;
 }
 
+// RJ: make this a bit more obvious.
+code.language-plaintext {
+  border: 1px solid $gray-light;
+  padding: 2px;
+  background-color: $gray-lighter;
+}
+
 pre {
   // border: 1px solid $gray-darkest;
   font-size: 0.75;
@@ -160,8 +167,8 @@ ol {
   padding: 0 0 0 1.66667em;
 }
 
-li > ul,
-li > ol {
+li>ul,
+li>ol {
   margin-bottom: 0;
 }
 
@@ -177,7 +184,7 @@ table {
   line-height: 1.5;
   margin: 0 0 1.875em;
   text-align: left;
-  width: 100%;
+  //width: 100%;
 }
 
 caption {
@@ -334,7 +341,7 @@ video {
   margin: 0 0 1.66667em;
 }
 
-.kg-embed-card > .fluid-width-video-wrapper {
+.kg-embed-card>.fluid-width-video-wrapper {
   margin: 0;
 }
 
@@ -394,8 +401,8 @@ img {
 
 /* Text meant only for screen readers */
 .screen-reader-text,
-.site-logo + .site-identity .site-title,
-.site-logo + .site-identity .site-description {
+.site-logo+.site-identity .site-title,
+.site-logo+.site-identity .site-description {
   border: 0;
   clip: rect(1px, 1px, 1px, 1px);
   height: 1px;
@@ -414,8 +421,8 @@ img {
   left: 50%;
   position: absolute;
   top: 50%;
-  -webkit-transform: translate(-50%,-50%);
-  transform: translate(-50%,-50%);
+  -webkit-transform: translate(-50%, -50%);
+  transform: translate(-50%, -50%);
 }
 
 .icon-arrow-left,
@@ -484,8 +491,8 @@ img {
   left: 50%;
   position: absolute;
   top: 50%;
-  -webkit-transform: translate(-50%,-50%);
-  transform: translate(-50%,-50%);
+  -webkit-transform: translate(-50%, -50%);
+  transform: translate(-50%, -50%);
   width: 30px;
 }
 
@@ -573,78 +580,78 @@ img {
 
 /* Animations */
 @-webkit-keyframes fadeInOpacity {
-    0% {
-        opacity: 0;
-    }
+  0% {
+    opacity: 0;
+  }
 
-    100% {
-        opacity: .15;
-    }
+  100% {
+    opacity: .15;
+  }
 }
 
 @keyframes fadeInOpacity {
-    0% {
-        opacity: 0;
-    }
+  0% {
+    opacity: 0;
+  }
 
-    100% {
-        opacity: .15;
-    }
+  100% {
+    opacity: .15;
+  }
 }
 
 .fadeInDown {
-    -webkit-animation-duration: 0.3s;
-    animation-duration: 0.3s;
-    -webkit-animation-fill-mode: both;
-    animation-fill-mode: both;
-    -webkit-animation-name: fadeInDown;
-    animation-name: fadeInDown;
+  -webkit-animation-duration: 0.3s;
+  animation-duration: 0.3s;
+  -webkit-animation-fill-mode: both;
+  animation-fill-mode: both;
+  -webkit-animation-name: fadeInDown;
+  animation-name: fadeInDown;
 }
 
 .delay_05s {
-    -webkit-animation-delay: 0.5s;
-    -moz-animation-delay: 0.5s;
-    animation-delay: 0.5s;
+  -webkit-animation-delay: 0.5s;
+  -moz-animation-delay: 0.5s;
+  animation-delay: 0.5s;
 }
 
 .delay_075s {
-    -webkit-animation-delay: 0.75s;
-    -moz-animation-delay: 0.75s;
-    animation-delay: 0.75s;
+  -webkit-animation-delay: 0.75s;
+  -moz-animation-delay: 0.75s;
+  animation-delay: 0.75s;
 }
 
 .delay_1s {
-    -webkit-animation-delay: 1s;
-    -moz-animation-delay: 1s;
-    animation-delay: 1s;
+  -webkit-animation-delay: 1s;
+  -moz-animation-delay: 1s;
+  animation-delay: 1s;
 }
 
 @-webkit-keyframes fadeInDown {
-    from {
-        opacity: 0;
-        -webkit-transform: translateY(-20px);
-        transform: translateY(-20px);
-    }
+  from {
+    opacity: 0;
+    -webkit-transform: translateY(-20px);
+    transform: translateY(-20px);
+  }
 
-    to {
-        opacity: 1;
-        -webkit-transform: translateY(0);
-        transform: translateY(0);
-    }
+  to {
+    opacity: 1;
+    -webkit-transform: translateY(0);
+    transform: translateY(0);
+  }
 }
 
 @keyframes fadeInDown {
-    from {
-        opacity: 0;
-        -webkit-transform: translateY(-20px);
-        transform: translateY(-20px);
-    }
+  from {
+    opacity: 0;
+    -webkit-transform: translateY(-20px);
+    transform: translateY(-20px);
+  }
 
-    to {
-        opacity: 1;
-        -webkit-transform: translateY(0);
-        transform: translateY(0);
-    }
+  to {
+    opacity: 1;
+    -webkit-transform: translateY(0);
+    transform: translateY(0);
+  }
 }
 
 
@@ -652,6 +659,7 @@ img {
 body.hidden-scroll {
   overflow: hidden;
 }
+
 .sl-overlay {
   background: #fff;
   bottom: 0;
@@ -662,9 +670,11 @@ body.hidden-scroll {
   top: 0;
   z-index: 1035;
 }
+
 .sl-wrapper {
   z-index: 1040;
 }
+
 .sl-wrapper button {
   background: 0;
   color: $gray-darkest;
@@ -673,6 +683,7 @@ body.hidden-scroll {
   padding: 0;
   width: 40px;
 }
+
 .sl-wrapper .sl-close {
   display: none;
   position: fixed;
@@ -680,10 +691,12 @@ body.hidden-scroll {
   top: 5px;
   z-index: 1060;
 }
+
 .sl-wrapper .sl-navigation {
   display: none;
   width: 100%;
 }
+
 .sl-wrapper .sl-next,
 .sl-wrapper .sl-prev {
   display: block;
@@ -693,12 +706,15 @@ body.hidden-scroll {
   transform: translateY(-50%);
   z-index: 1060;
 }
+
 .sl-wrapper .sl-next {
   right: 5px;
 }
+
 .sl-wrapper .sl-prev {
   left: 5px;
 }
+
 .sl-wrapper .sl-counter {
   color: $gray-light;
   bottom: 5px;
@@ -709,24 +725,29 @@ body.hidden-scroll {
   text-transform: uppercase;
   z-index: 1060;
 }
+
 .sl-wrapper .sl-current {
   padding-right: 3px;
 }
+
 .sl-wrapper .sl-total {
   padding-left: 3px;
 }
+
 .sl-wrapper .sl-image {
   position: fixed;
   -ms-touch-action: none;
   touch-action: none;
   z-index: 10000;
 }
+
 .sl-wrapper .sl-image img {
   border: 0;
   display: block;
   margin: 0;
   padding: 0;
 }
+
 .sl-scrollbar-measure {
   height: 50px;
   overflow: scroll;
@@ -734,6 +755,7 @@ body.hidden-scroll {
   top: -9999px;
   width: 50px;
 }
+
 .sl-spinner {
   display: none;
   border: 4px solid $gray;
@@ -749,27 +771,33 @@ body.hidden-scroll {
   -webkit-animation: pulsate 1s ease-out infinite;
   animation: pulsate 1s ease-out infinite;
 }
+
 @-webkit-keyframes pulsate {
   0% {
     transform: scale(0.1);
     opacity: 0;
   }
+
   50% {
     opacity: 1;
   }
+
   100% {
     transform: scale(1.2);
     opacity: 0;
   }
 }
+
 @keyframes pulsate {
   0% {
     transform: scale(0.1);
     opacity: 0;
   }
+
   50% {
     opacity: 1;
   }
+
   100% {
     transform: scale(1.2);
     opacity: 0;
@@ -782,6 +810,7 @@ body.hidden-scroll {
   display: block;
   font-size: 1rem;
   margin-bottom: 0.55556em;
+
   span {
     color: $gray-dark;
     font-size: 0.77778rem;

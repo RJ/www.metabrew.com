@@ -1,7 +1,7 @@
 --- 
 layout: post
-published: true
-title: "Multiplayer Games with Bevy Lightyear"
+published: false
+title: "Actually writing a game.."
 permalink: /article/bevy-multiplayer-games-with-lightyear
 tags: 
 - gamedev

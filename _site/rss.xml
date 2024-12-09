@@ -3,11 +3,388 @@
   <channel>
     <title>Richard Jones</title>
     <description>Logbook / blog / devlog</description>
-    <link>/</link>
-    <atom:link href="/feed.xml" rel="self" type="application/rss+xml"/>
-    <pubDate>Fri, 30 Jul 2021 15:51:54 +0100</pubDate>
-    <lastBuildDate>Fri, 30 Jul 2021 15:51:54 +0100</lastBuildDate>
-    <generator>Jekyll v4.2.0</generator>
+    <link>http://0.0.0.0:4000/</link>
+    <atom:link href="http://0.0.0.0:4000/feed.xml" rel="self" type="application/rss+xml"/>
+    <pubDate>Mon, 09 Dec 2024 05:55:11 -0600</pubDate>
+    <lastBuildDate>Mon, 09 Dec 2024 05:55:11 -0600</lastBuildDate>
+    <generator>Jekyll v4.2.2</generator>
+    
+      <item>
+        <title>Bevygap: Autoscaling multiplayer Bevy game servers with Edgegap &amp;amp; Lightyear</title>
+        <description>&lt;p&gt;If i’m going to write a server-authoritative multiplayer game, it would be nice to have a decent way to deploy it. Especially to deploy servers around the world in response to player demand, to autoscale and keep latency down.&lt;/p&gt;
+
+&lt;h4 id=&quot;modifying-the-lightyear-spaceships-example&quot;&gt;Modifying the Lightyear spaceships example&lt;/h4&gt;
+
+&lt;p&gt;&lt;img align=&quot;right&quot; width=&quot;100&quot; src=&quot;/assets/images/bevy/bevy-logo.png&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;I took my &lt;a href=&quot;https://github.com/cBournhonesque/lightyear/tree/main/examples/spaceships&quot;&gt;spaceships example&lt;/a&gt; from the &lt;a href=&quot;https://github.com/cBournhonesque/lightyear&quot;&gt;lightyear repo&lt;/a&gt;, and repackaged it with the following changes:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;Split into a &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;client&lt;/code&gt;, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;shared&lt;/code&gt;, and &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;server&lt;/code&gt; crates&lt;/li&gt;
+  &lt;li&gt;Changed to only support webtransport – no steam, no plain UDP, etc.&lt;/li&gt;
+  &lt;li&gt;Made server headless - no gui option&lt;/li&gt;
+  &lt;li&gt;Added Dockerfile to build the server; produces a ~30mb image (thanks &lt;a href=&quot;https://github.com/GoogleContainerTools/distroless&quot;&gt;distroless&lt;/a&gt;)&lt;/li&gt;
+  &lt;li&gt;Added Dockerfile to build wasm client; produces an image based on &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;nginx&lt;/code&gt; to serve our &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;index.html&lt;/code&gt; and wasm assets.&lt;/li&gt;
+  &lt;li&gt;Added Github actions to build and push the server and wasm client docker images&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;At this point it was easy enough to run the server and client containers on a single server, and I started to look for a way to autodeploy servers to multiple locations on demand. I’m not going to review the various options or discuss the pros and cons other than to say there are a few to choose from, and I decided to go with &lt;a href=&quot;https://edgegap.com&quot;&gt;Edgegap&lt;/a&gt;.&lt;/p&gt;
+
+&lt;p&gt;My &lt;a href=&quot;https://github.com/RJ/bevygap-spaceships&quot;&gt;bevygap-spaceships&lt;/a&gt; repo contains this repackaged version of the spaceships demo.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/images/bevy/spaceships.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;edgegap--the-basics&quot;&gt;Edgegap – the basics&lt;/h3&gt;
+
+&lt;p&gt;&lt;img align=&quot;right&quot; width=&quot;150&quot; src=&quot;/assets/images/bevy/edgegap-logo.png&quot; /&gt;&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;You push the gameserver docker image to Edgegap’s container registry, so they are able to deploy gameservers for you at will.&lt;/li&gt;
+  &lt;li&gt;You configure the metadata for your game – max players per server, time an empty server stays online for, etc.&lt;/li&gt;
+  &lt;li&gt;When players want to play, you use Edgegap’s API to create a &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Session&lt;/code&gt;, which is a list of at least 1 player IP addresses.&lt;/li&gt;
+  &lt;li&gt;For every &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Session&lt;/code&gt;, Edgegap will either return the details for an already-running server, that has capacity, in a sensible location, for the IPs in the session, or take a few seconds to deploy another gameserver for you, before returning the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;deployment&lt;/code&gt; details. An edgegap &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;deployment&lt;/code&gt; refers to a single instance of your gameserver container, and includes amongst other things the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ip:port&lt;/code&gt; clients need to make a connection&lt;/li&gt;
+  &lt;li&gt;You pass the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ip:port&lt;/code&gt; along to the game client, which makes the connection to the server.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;There’s a bit of plumbing needed to wire all this up so it’s easy to use in bevy, which I will now explain.&lt;/p&gt;
+
+&lt;h2 id=&quot;bevygap-a-toolkit-for-running-serverclient-games-on-edgegap&quot;&gt;Bevygap: a toolkit for running server/client games on Edgegap&lt;/h2&gt;
+
+&lt;p&gt;Allow me to introduce the various components:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/images/bevy/bevygap-20241105.png&quot; alt=&quot;Bevygap component diagram&quot; /&gt;&lt;/p&gt;
+
+&lt;h4 id=&quot;messaging-layer&quot;&gt;Messaging layer&lt;/h4&gt;
+
+&lt;p&gt;&lt;a href=&quot;nats.io&quot;&gt;
+&lt;img align=&quot;right&quot; width=&quot;150&quot; src=&quot;/assets/images/bevy/nats-logo.png&quot; /&gt;
+&lt;/a&gt;&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;&lt;small&gt;NATS, running from a docker container, listening using TLS&lt;/small&gt;&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;Gameservers need to be able to talk to the matchmaker(s), and a bit of key/value storage is useful for configuration. I chose to use NATS, which supports various messaging patterns like pub-sub, along with some key/value storage. My NATS server listens on a public IP, so that the gameservers can connect to it from Edgegap’s infrastructure.&lt;/p&gt;
+
+&lt;h4 id=&quot;matchmaker&quot;&gt;Matchmaker&lt;/h4&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;&lt;small&gt;A rust async tokio binary&lt;/small&gt;&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;When a player wants to connect, the matchmaker talks to the edgegap API to create a session, and await the results before returning the deployment details (the gameserver &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ip:port&lt;/code&gt; etc). The matchmaker exposes this functionality as a service on the NATS bus.&lt;/p&gt;
+
+&lt;h4 id=&quot;matchmaker-httpd&quot;&gt;Matchmaker HTTPd&lt;/h4&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;&lt;small&gt;A rust async tokio binary using the Axum webserver&lt;/small&gt;&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;This is the public websocket interface to the matchmaker. It speaks JSON to the game clients, and passes on the query via NATS to the matchmaker service.&lt;/p&gt;
+
+&lt;h4 id=&quot;bevygap-server-plugin&quot;&gt;Bevygap Server Plugin&lt;/h4&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;&lt;small&gt;A bevy plugin for the gameserver&lt;/small&gt;&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;At startup, this will make a connection to your NATS server, and read the various environment variables set by Edgegap. This tells us things like the geographic location of the server, the public &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ip:port&lt;/code&gt;, and how to fetch additional context data. Check out the &lt;a href=&quot;https://docs.edgegap.com/docs/deployment/injected-variables&quot;&gt;edgegap docs for injected variables&lt;/a&gt; for more.&lt;/p&gt;
+
+&lt;h4 id=&quot;bevygap-client-plugin&quot;&gt;Bevygap Client Plugin&lt;/h4&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;&lt;small&gt;A bevy plugin for the game client, wasm and native&lt;/small&gt;&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;This is mostly concerned with connecting to our matchmaker websocket over http, and requesting to play. Once a successful response is returned, the plugin will modify the Lightyear settings with the returned server ip and port, the lightyear &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ConnectToken&lt;/code&gt;, and in the case of wasm clients, the certificate digest for the WebTransport connection. It then signals the game to make the connection to the lightyear game server.&lt;/p&gt;
+
+&lt;p&gt;As part of this, I wrote &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;bevy_nfws&lt;/code&gt;, a &lt;strong&gt;n&lt;/strong&gt;o-&lt;strong&gt;f&lt;/strong&gt;rills &lt;strong&gt;w&lt;/strong&gt;eb&lt;strong&gt;s&lt;/strong&gt;ocket client library for bevy that works on native and wasm. There are a few feature-rich websocket libraries for bevy already, but many expect you to also be running bevy on the server end of the connection, which I’m not.&lt;/p&gt;
+
+&lt;h2 id=&quot;modifying-a-lightyear-game-to-use-bevygap&quot;&gt;Modifying a Lightyear game to use bevygap&lt;/h2&gt;
+
+&lt;p&gt;Code changes to the server and client are minimal. My example game toggles them with a &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;bevygap&lt;/code&gt; cargo feature, so I can still do local development without using the matchmaker.&lt;/p&gt;
+
+&lt;h4 id=&quot;server&quot;&gt;Server&lt;/h4&gt;
+
+&lt;p&gt;Your lightyear gameserver needs two changes to support bevygap: adding the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;BevygapServerPlugin&lt;/code&gt;, and delaying listening on the socket until bevygap reports it is ready. Any failure to connect to NATS or read the edgegap ENVs during startup will cause a panic by design.&lt;/p&gt;
+
+&lt;div class=&quot;language-rust highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;k&quot;&gt;impl&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;Plugin&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;for&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;BevygapSpaceshipsServerPlugin&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;fn&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;build&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;amp;&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;app&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;amp;&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;mut&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;App&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+      &lt;span class=&quot;c1&quot;&gt;// Add the bevygap server plugin which will connect to NATS, read the environment, etc&lt;/span&gt;
+      &lt;span class=&quot;n&quot;&gt;app&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;.add_plugins&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nn&quot;&gt;BevygapServerPlugin&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;self_signed_digest&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;cert_digest&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;));&lt;/span&gt;
+      &lt;span class=&quot;c1&quot;&gt;// only start listening once bevygap setup complete&lt;/span&gt;
+      &lt;span class=&quot;n&quot;&gt;app&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;.observe&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;start_listening_once_bevygap_ready&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+
+&lt;span class=&quot;cd&quot;&gt;/// Without bevygap, you&apos;d just call `start_server()` in a Startup system.&lt;/span&gt;
+&lt;span class=&quot;cd&quot;&gt;/// We defer this until bevygap setup is complete.&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;fn&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;start_listening_once_bevygap_ready&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;_&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;Trigger&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;BevygapReady&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;mut&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;commands&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;Commands&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;nd&quot;&gt;info!&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;Lightyear server listening, bevygap reported ready&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;commands&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;.start_server&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;();&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;h5 id=&quot;webtransport-wasm-clients-and-tls-certificate-digests&quot;&gt;WebTransport, WASM Clients, and TLS Certificate Digests&lt;/h5&gt;
+
+&lt;p&gt;My gameserver &lt;a href=&quot;https://github.com/RJ/bevygap-spaceships/blob/9583777aa2f6e01a6b28428b7ba92be428fc084a/server/src/main.rs#L74&quot;&gt;generates&lt;/a&gt; a WebTransport-specification-&lt;a href=&quot;https://w3c.github.io/webtransport/#dom-webtransportoptions-servercertificatehashes&quot;&gt;compliant&lt;/a&gt; self-signed TLS cert on startup.
+This is fully supported as long as you provide the certificate digest to the browser before it attempts a connection, and comply with the &lt;a href=&quot;https://w3c.github.io/webtransport/#verify-a-certificate-hash&quot;&gt;following part&lt;/a&gt; of the spec:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;The certificate MUST be an X.509v3 certificate as defined in RFC5280.&lt;/li&gt;
+  &lt;li&gt;The key used in the Subject Public Key field MUST be one of the allowed public key algorithms. (I’m using ECDSA P-256)&lt;/li&gt;
+  &lt;li&gt;The current time MUST be within the validity period of the certificate as defined in Section 4.1.2.5 of RFC5280.&lt;/li&gt;
+  &lt;li&gt;The total length of the validity period MUST NOT exceed two weeks.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;The bevygap system automatically stores the certificate digest in NATS and passes it along to clients in the matchmaker response.&lt;/p&gt;
+
+&lt;h4 id=&quot;client&quot;&gt;Client&lt;/h4&gt;
+
+&lt;p&gt;Add the bevygap client plugin, after inserting &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;BevygapClientConfig&lt;/code&gt;, specifying:&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;the URL to the matchmaker websocket, eg: &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;wss://matchmaker.example.com/matchmaker/ws&lt;/code&gt;&lt;/li&gt;
+  &lt;li&gt;the name of the game, as configured in edgegap&lt;/li&gt;
+  &lt;li&gt;the version of the game, as configured in edgegap&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;Instead of calling Lightyear’s &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;commands.connect_client()&lt;/code&gt;, you use &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;commands.bevygap_connect_client()&lt;/code&gt; which will call lightyear’s &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;connect_client()&lt;/code&gt; for you after receiving a response from the matchmaker and modifying the connection parameters.&lt;/p&gt;
+
+&lt;p&gt;You can watch for changes to &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;BevygapClientState&lt;/code&gt; to see progress.&lt;/p&gt;
+
+&lt;div class=&quot;language-rust highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;k&quot;&gt;impl&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;Plugin&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;for&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;BevygapSpaceshipsClientPlugin&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;fn&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;build&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;amp;&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;app&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;amp;&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;mut&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;App&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+      &lt;span class=&quot;c1&quot;&gt;// ..&lt;/span&gt;
+      &lt;span class=&quot;n&quot;&gt;app&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;.insert_resource&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;BevygapClientConfig&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+          &lt;span class=&quot;n&quot;&gt;matchmaker_url&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;get_matchmaker_url&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(),&lt;/span&gt;
+          &lt;span class=&quot;n&quot;&gt;game_name&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;bevygap-spaceships&quot;&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;.to_string&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(),&lt;/span&gt;
+          &lt;span class=&quot;n&quot;&gt;game_version&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;1&quot;&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;.to_string&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(),&lt;/span&gt;
+          &lt;span class=&quot;o&quot;&gt;..&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;default&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;
+      &lt;span class=&quot;p&quot;&gt;});&lt;/span&gt;
+
+      &lt;span class=&quot;n&quot;&gt;app&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;.add_plugins&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;BevygapClientPlugin&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+      &lt;span class=&quot;n&quot;&gt;app&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;.add_systems&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Startup&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;connect&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+
+      &lt;span class=&quot;c1&quot;&gt;// You can monitor changes to matchmaking state like this:&lt;/span&gt;
+      &lt;span class=&quot;c1&quot;&gt;// app.add_systems(&lt;/span&gt;
+      &lt;span class=&quot;c1&quot;&gt;//     Update,&lt;/span&gt;
+      &lt;span class=&quot;c1&quot;&gt;//     on_bevygap_state_change.run_if(state_changed::&amp;lt;BevygapClientState&amp;gt;),&lt;/span&gt;
+      &lt;span class=&quot;c1&quot;&gt;// );&lt;/span&gt;
+      &lt;span class=&quot;c1&quot;&gt;// ..&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+
+&lt;span class=&quot;cd&quot;&gt;/// This opens the websocket to the matchmaker url, and requests to play.&lt;/span&gt;
+&lt;span class=&quot;cd&quot;&gt;/// Once a successful response arrives, it calls lightyear&apos;s commands.connect_client() fn.&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;fn&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;connect&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;mut&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;commands&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;Commands&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+  &lt;span class=&quot;n&quot;&gt;commands&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;.bevygap_connect_client&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;();&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;h2 id=&quot;cost-and-scaling&quot;&gt;Cost and Scaling&lt;/h2&gt;
+
+&lt;p&gt;If you follow the Edgegap setup instructions in &lt;a href=&quot;https://rj.github.io/bevygap/installation/edgegap.html&quot;&gt;The Bevygap Book&lt;/a&gt; you’ll see that I set the “Empty Time To Live” to 10 minutes, and select autodeploy. This means server instances are terminated after 10 mins of having no connected players, and automatically started where they are needed.&lt;/p&gt;
+
+&lt;p&gt;Since Edgegap charge for the running time and bandwidth servers use, you aren’t billed for the time you have zero instances running.&lt;/p&gt;
+
+&lt;p&gt;This means as well as scaling up, it scales down to almost zero when there are no players. There is a small fixed cost for a low powered server that runs NATS and the matchmaker service. I run those services on the machine that hosts this website.&lt;/p&gt;
+
+&lt;h2 id=&quot;using-it&quot;&gt;Using it&lt;/h2&gt;
+
+&lt;p&gt;You can set this all up with an Edgegap free trial account. The installation sections in &lt;a href=&quot;https://rj.github.io/bevygap/&quot;&gt;The Bevygap Book&lt;/a&gt; shows how I set up NATS (and the &lt;a href=&quot;https://docs.nats.io/&quot;&gt;offical NATS docs&lt;/a&gt; are excellent), along with Edgegap, and all the required environment variables.&lt;/p&gt;
+
+&lt;p&gt;If you try it out, let me know in the &lt;a href=&quot;https://discord.com/channels/691052431525675048/1189344685546811564&quot;&gt;#lightyear channel&lt;/a&gt; on Bevy’s Discord.&lt;/p&gt;
+
+&lt;h1 id=&quot;live-demo&quot;&gt;Live Demo&lt;/h1&gt;
+
+&lt;p&gt;Is the &lt;a href=&quot;https://game.metabrew.com/bevygap-spaceships/&quot;&gt;live demo of bevygap-spaceships&lt;/a&gt; working? Hopefully! In chrome at least..&lt;/p&gt;
+
+&lt;h3 id=&quot;links&quot;&gt;Links&lt;/h3&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;&lt;a href=&quot;https://bevyengine.org/&quot;&gt;Bevy&lt;/a&gt; - A refreshingly simple data-driven game engine built in Rust&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://github.com/cBournhonesque/lightyear&quot;&gt;Lightyear&lt;/a&gt; - A networking library to make multiplayer games for the Bevy game engine&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://github.com/RJ/bevygap-spaceships&quot;&gt;bevygap-spaceships&lt;/a&gt; game repo, my split server/client version of Lightyear’s spaceships example, with bevygap support.&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://github.com/RJ/bevygap&quot;&gt;Bevygap&lt;/a&gt; repo, the toolkit for making all this work&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://rj.github.io/bevygap/installation/edgegap.html&quot;&gt;The Bevygap Book&lt;/a&gt; - docs for setting up bevygap and related bits&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://edgegap.com&quot;&gt;Edgegap&lt;/a&gt; - this does the deployment and session management of our gameserver&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://nats.io&quot;&gt;NATS&lt;/a&gt; - Message bus ++&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://game.metabrew.com/bevygap-spaceships/&quot;&gt;Live demo of spaceships example game&lt;/a&gt; - use a Chrome based browser&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;See my &lt;a href=&quot;/tag/bevygap&quot;&gt;other posts tagged as ‘bevygap’&lt;/a&gt;.&lt;/p&gt;
+</description>
+        <pubDate>Mon, 09 Dec 2024 00:00:00 -0600</pubDate>
+        <link>http://0.0.0.0:4000/article/bevygap-bevy-multiplayer-with-edgegap-and-lightyear</link>
+        <guid isPermaLink="true">http://0.0.0.0:4000/article/bevygap-bevy-multiplayer-with-edgegap-and-lightyear</guid>
+        
+        <category>gamedev</category>
+        
+        <category>rust</category>
+        
+        <category>edgegap</category>
+        
+        <category>netcode</category>
+        
+        <category>multiplayer</category>
+        
+        <category>bevy</category>
+        
+        <category>bevygap</category>
+        
+        
+      </item>
+    
+      <item>
+        <title>Rock and Rollback: Realtime multiplayer in the browser, with rust and bevy</title>
+        <description>&lt;p&gt;How hard it is to build a realtime multiplayer browser game? Like asteroids, but multiplayer. Retro vibes with modern netcode 🚀.&lt;/p&gt;
+
+&lt;h3 id=&quot;realtime-multiplayer-in-the-browser&quot;&gt;Realtime multiplayer in the browser&lt;/h3&gt;
+
+&lt;p&gt;Until relatively recently, realtime multiplayer in the browser was hamstrung by the lack of an unreliable network transport. Everything the browser did was TCP, and &lt;em&gt;the&lt;/em&gt; realtime option was websockets.&lt;/p&gt;
+
+&lt;p&gt;TCP has head-of-line blocking though, because it’s a reliable ordered stream. If you’re streaming positional updates 60 times a second, and one of those packets is dropped or delayed, TCP won’t deliver any newly arrived packets to your game until the dropped one is retransmitted, effectively delaying all subsequent packets too. That’s why realtime netcode prefers UDP.&lt;/p&gt;
+
+&lt;p&gt;With UDP it’s up to your game protocol to handle dropped packets, which is extra work, but means you can stream realtime data and not suffer the same issues as TCP. Packets are delivered to your game as soon as they arrive, regardless of any packet loss or delays.&lt;/p&gt;
+
+&lt;p&gt;If only there was a way to do this in the browser..&lt;/p&gt;
+
+&lt;h4 id=&quot;browser-technologies-for-unreliable-datagrams&quot;&gt;Browser technologies for unreliable datagrams&lt;/h4&gt;
+
+&lt;p&gt;&lt;strong&gt;WebRTC&lt;/strong&gt;, which is designed for video and audio calling in the browser, has an Unreliable Datachannel option (UDP). This is suitable, but there is quite a lot of machinery required to present yourself as a WebRTC server just to open a data channel.&lt;/p&gt;
+
+&lt;p&gt;The newish &lt;strong&gt;WebTransport&lt;/strong&gt; API operates over &lt;a href=&quot;https://en.wikipedia.org/wiki/HTTP/3&quot;&gt;HTTP/3&lt;/a&gt;, using QUIC – atop UDP. It supports unreliable data channels, and is less of a headache to use serverside. Nowadays this seems like a decent choice for the in-browser network layer for a realtime game.&lt;/p&gt;
+
+&lt;h2 id=&quot;choosing-a-network-model-abridged&quot;&gt;Choosing a network model, abridged&lt;/h2&gt;
+
+&lt;p&gt;To figure out how to network multiplayer asteroids, it behooves us to consider one of the most common approaches to netcode called &lt;strong&gt;Snapshot Interpolation&lt;/strong&gt; – used by first person shooters for decades.&lt;/p&gt;
+
+&lt;h3 id=&quot;quake-et-al&quot;&gt;Quake, et al.&lt;/h3&gt;
+
+&lt;p&gt;Quake, and many FPS games that came after it, can be described as:&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;A bunch of players moving around a mostly static world, shooting at each other.&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;These games are continually sending your inputs (move forward, jump, shoot..) to the server. The server is simulating your character, along with the rest of the players, as inputs arrive. The server streams snapshots back to you containing up-to-date positions at specific points in time (each “tick”).&lt;/p&gt;
+
+&lt;p&gt;To smooth out the movement, the game buffers incoming snapshots and interpolates between two recent ones to compute player positions. This gives silky smooth movement, but results in you seeing a slightly outdated position for other players.&lt;/p&gt;
+
+&lt;p&gt;This is the standard approach for competetive FPS. You can tune the buffers to smooth over network lag spikes, at the cost of moving remote player timelines further into the past.&lt;/p&gt;
+
+&lt;h4 id=&quot;local-player-prediction-and-rollback&quot;&gt;Local-player Prediction and Rollback&lt;/h4&gt;
+
+&lt;p&gt;To further complicate matters, when you hit &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;W&lt;/code&gt; to move forward, the game doesn’t wait for a server update before moving your own player’s position. &lt;strong&gt;Your own position is predicted, not interpolated&lt;/strong&gt;, ie. when you press forward, your local player immediately moves forward, while your &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;I&apos;m pressing W on tick 123&lt;/code&gt; packet travels to the server. The server processes it, dutifully moves your player forward, and includes the new position in the next snapshot.&lt;/p&gt;
+
+&lt;p&gt;Your game client, which kept a record of your predicted movement and inputs for the last few ticks, will need to reconcile this with updates received from the server. If the snapshot position at a given tick matches the position in your buffer at that tick, that’s ideal. If there was a misprediction, you wind back your position to the tick from the snapshot, snap your player to the snapshot-position, and replay any stored input commands to fast-forward your predicted location back to your current predicted tick on the client.&lt;/p&gt;
+
+&lt;h3 id=&quot;snapshot-interpolation-asteroids&quot;&gt;Snapshot interpolation asteroids?&lt;/h3&gt;
+
+&lt;p&gt;What happens if we apply this model to multiplayer asteroids? We predict movement of your own ship, just like FPS, and do snapshot interpolation for remote players and asteroids.&lt;/p&gt;
+
+&lt;p&gt;The movement of players and asteroids would be nice and smooth, right up to the moment you collide with something.&lt;/p&gt;
+
+&lt;p&gt;Your ship is locally predicted ahead of the server, based on your inputs. Remote asteroids or players are shown in the past, due to snapshot interpolation. So you’re essentially seeing the position of other objects but from (say) 75ms in the past.&lt;/p&gt;
+
+&lt;p&gt;For a game that would surely involve lots of crashing into other players and asteroids, we don’t want janky collisions.&lt;/p&gt;
+
+&lt;h2 id=&quot;client-prediction--rollback-for-everything&quot;&gt;Client Prediction &amp;amp; Rollback for Everything&lt;/h2&gt;
+
+&lt;p&gt;Asteroids are pretty simple, they just keep moving until they collide with something. So we’ll have our client project their position forward into the same timeline as the local player. This means we run same physics simulation code on the client as we do on the server.&lt;/p&gt;
+
+&lt;p&gt;We’ll store a historical record for each entity: the last few frames of position/rotation. When we get a server update about a position, we can check it against our historical record for that tick. If there were any discrepencies, we perform a rollback: wind back time to the tick from the server update, snap positions to the server-authoritative position, and fast-forward back to our current tick, resimulating the physics as we go – and in the case of mispredicted players, re-applying any stored inputs.&lt;/p&gt;
+
+&lt;p&gt;Any errors corrected after rollback, as a result of a misprediction, can be blended in visually over a few frames. Meanwhile the underlying state of the client’s physics always strives to be as correct as possible.&lt;/p&gt;
+
+&lt;h2 id=&quot;experiments-with-bevy&quot;&gt;Experiments with Bevy&lt;/h2&gt;
+
+&lt;p&gt;I did some experiments with the bevy game engine and a home-grown netcode/rollback system to explore what would work for multiplayer asteroids.&lt;/p&gt;
+
+&lt;h4 id=&quot;client-prediction-single-player&quot;&gt;Client-prediction, single player&lt;/h4&gt;
+
+&lt;p&gt;This experiment, with just one player connected to the server, predicts the position of asteroids into the same timeframe as the player. The grey outlines show the most recent position of the object received from the server. The server tick rate is set fairly low so it’s easy to see what’s happening. There were no mispredictions, because with just one player connected, everything is deterministic.&lt;/p&gt;
+
+&lt;figure&gt;
+    &lt;iframe width=&quot;560&quot; height=&quot;315&quot; src=&quot;https://www.youtube.com/embed/ZAbuYm6MS5s?si=qmnr3lyuJ0E-UWLh&quot; title=&quot;YouTube video player&quot; frameborder=&quot;0&quot; allow=&quot;accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share&quot; allowfullscreen=&quot;&quot;&gt;&lt;/iframe&gt;
+
+    
+    &lt;figcaption class=&quot;caption-text&quot;&gt;Client on the left, server on the right. 100ms simulated lag. No Audio.&lt;/figcaption&gt;
+    
+&lt;/figure&gt;
+
+&lt;p&gt;If you fullscreen this video, you’ll be able to see the light grey outline of each entity - that is the last received authoritative server position. The colored outlines are where the client has predicted them in the client timeline. No rollbacks or jank because with a single player, there aren’t any mispredictions.&lt;/p&gt;
+
+&lt;h4 id=&quot;timeline-jank-experiment&quot;&gt;Timeline jank experiment&lt;/h4&gt;
+
+&lt;p&gt;Here’s an experiment I conducted testing how collisions behave differently when asteroids are predicted forward into the same timeline as the local player.&lt;/p&gt;
+
+&lt;p&gt;Movement looks good in isolation, however per my voiceover in the next video, remote players do get janky collisions.
+This is because of the temporal disrepency between remote players and other objects. With remote players
+held 6 frames in the past, which equates to around 100ms, there are janky collisions. Watch what happens to collisions when I enable input prediction for remote players, to bring them into the same timeframe as the local player and asteroids:&lt;/p&gt;
+
+&lt;figure&gt;
+    &lt;iframe width=&quot;560&quot; height=&quot;315&quot; src=&quot;https://www.youtube.com/embed/Jxetoat3wsw?si=xdB4BAlE2hz27Ugh&quot; title=&quot;YouTube video player&quot; frameborder=&quot;0&quot; allow=&quot;accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share&quot; allowfullscreen=&quot;&quot;&gt;&lt;/iframe&gt;
+
+    
+    &lt;figcaption class=&quot;caption-text&quot;&gt;Audio commentary – unmute! Each player has 70ms of simulated lag.&lt;/figcaption&gt;
+    
+&lt;/figure&gt;
+
+&lt;h2 id=&quot;predicting-remote-players&quot;&gt;Predicting Remote Players&lt;/h2&gt;
+
+&lt;p&gt;Since we don’t have up-to-date inputs for remote players on our most recent ticks, we just assume they are still pressing the same buttons as the last-known input.
+Players holding down forward are most likely to still be holding down forward.&lt;/p&gt;
+
+&lt;p&gt;This, plus smearing errors due to mispredictions over a couple of frames, can work pretty well, provided we keep player latency to a reasonable amount.&lt;/p&gt;
+
+&lt;p&gt;We can also bake in 3 ticks of input delay for all players. So inputs a client presses are used for t+3, but sent to the server immediately and rebroadcast to other players. This means sometimes you do in fact have all inputs for remote players, or at least only have to guess 1 or 2 ticks worth.&lt;/p&gt;
+
+&lt;h2 id=&quot;implementation-details&quot;&gt;Implementation Details&lt;/h2&gt;
+
+&lt;p&gt;These experiments really helped me understand what kind of netcode model I needed – but I ended up throwing away most of the code I’d written. My rollback implementation was kind of a mess, being very new to rust, bevy, and gamedev in general. I was very happy to discover &lt;a href=&quot;https://github.com/cBournhonesque/lightyear&quot;&gt;Lightyear&lt;/a&gt;, which has built-in prediction &amp;amp; rollback, and WebTransport support that works on native and WASM builds.&lt;/p&gt;
+
+&lt;p&gt;I contributed a basic asteroid-esque game to the Lightyear examples, called &lt;a href=&quot;https://github.com/cBournhonesque/lightyear/tree/main/examples/spaceships&quot;&gt;spaceships&lt;/a&gt;, which allowed me to experiment with how things like predicted bullet spawning should work.  The spaceships demo does client prediction for players and “asteroids” (well, circles). It compiles to wasm and works in Chrome (as of this post, I think it works in firefox nightly but not stable yet):&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/images/bevy/spaceships.png&quot; alt=&quot;Spaceships screenshot&quot; /&gt;&lt;/p&gt;
+
+&lt;figure&gt;
+    &lt;img src=&quot;/assets/images/spaceships.png&quot; alt=&quot;Spaceships example game from Lightyear&quot; /&gt;
+    
+        &lt;figcaption class=&quot;caption-text&quot;&gt;WASM on the left, native app on the right&lt;/figcaption&gt; 
+    
+&lt;/figure&gt;
+
+&lt;h2 id=&quot;onwards&quot;&gt;Onwards&lt;/h2&gt;
+
+&lt;p&gt;Time to build a game! But wait, let’s procrastinate a little more first by trying to figure out a good way to deploy multiplayer bevy games that use lightyear..&lt;/p&gt;
+
+&lt;h4 id=&quot;links&quot;&gt;Links&lt;/h4&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;&lt;a href=&quot;https://www.youtube.com/watch?v=ueEmiDM94IE&quot;&gt;It IS Rocket Science! The Physics of Rocket League Detailed&lt;/a&gt; a great GDC talk. Rocket League uses a similar network model.&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://mas-bandwidth.com/choosing-the-right-network-model-for-your-multiplayer-game/&quot;&gt;Choosing the right network model for your multiplayer game&lt;/a&gt; by Glenn Fiedler. All his articles about game networking are essential reading.&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://bevyengine.org/&quot;&gt;Bevy&lt;/a&gt; - A refreshingly simple data-driven game engine built in Rust&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://github.com/cBournhonesque/lightyear&quot;&gt;Lightyear&lt;/a&gt; - A fantastic networking library to make multiplayer games for the Bevy game engine&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;See my &lt;a href=&quot;/tag/bevygap&quot;&gt;other posts tagged as ‘bevygap’&lt;/a&gt;.&lt;/p&gt;
+</description>
+        <pubDate>Sun, 08 Dec 2024 00:00:00 -0600</pubDate>
+        <link>http://0.0.0.0:4000/article/rock-and-rollback-realtime-multiplayer-games-with-bevy</link>
+        <guid isPermaLink="true">http://0.0.0.0:4000/article/rock-and-rollback-realtime-multiplayer-games-with-bevy</guid>
+        
+        <category>gamedev</category>
+        
+        <category>netcode</category>
+        
+        <category>multiplayer</category>
+        
+        <category>bevy</category>
+        
+        <category>bevygap</category>
+        
+        
+      </item>
     
       <item>
         <title>10 years later&amp;hellip;</title>
@@ -23,9 +400,9 @@
 &lt;script async=&quot;&quot; src=&quot;https://platform.twitter.com/widgets.js&quot; charset=&quot;utf-8&quot;&gt;&lt;/script&gt;
 
 </description>
-        <pubDate>Thu, 29 Jul 2021 00:00:00 +0100</pubDate>
-        <link>/article/2021-blog-update</link>
-        <guid isPermaLink="true">/article/2021-blog-update</guid>
+        <pubDate>Thu, 29 Jul 2021 00:00:00 -0500</pubDate>
+        <link>http://0.0.0.0:4000/article/2021-blog-update</link>
+        <guid isPermaLink="true">http://0.0.0.0:4000/article/2021-blog-update</guid>
         
         <category>life</category>
         
@@ -54,13 +431,13 @@ especially nostalgic, you can start Erlang’s appmon (a real GUI app), or
 &lt;h3 id=&quot;erlangs-webtool-and-appmon&quot;&gt;Erlang’s Webtool and Appmon&lt;/h3&gt;
 
 &lt;p&gt;&lt;a href=&quot;/images/bigwig/webtool-orig.png&quot;&gt;
-    &lt;img src=&quot;/images/bigwig/webtool-orig.png&quot; alt=&quot;&quot; title=&quot;Erlang's Webtool&quot; width=&quot;500&quot; class=&quot;aligncenter size-full&quot; /&gt;
+    &lt;img src=&quot;/images/bigwig/webtool-orig.png&quot; alt=&quot;&quot; title=&quot;Erlang&apos;s Webtool&quot; width=&quot;500&quot; class=&quot;aligncenter size-full&quot; /&gt;
 &lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;&lt;br /&gt;&lt;/p&gt;
 
 &lt;p&gt;&lt;a href=&quot;/images/bigwig/appmon-orig.png&quot;&gt;
-    &lt;img src=&quot;/images/bigwig/appmon-orig.png&quot; alt=&quot;&quot; title=&quot;Erlang's Appmon, and other tools&quot; width=&quot;500&quot; class=&quot;aligncenter size-full&quot; /&gt;
+    &lt;img src=&quot;/images/bigwig/appmon-orig.png&quot; alt=&quot;&quot; title=&quot;Erlang&apos;s Appmon, and other tools&quot; width=&quot;500&quot; class=&quot;aligncenter size-full&quot; /&gt;
 &lt;/a&gt;&lt;/p&gt;
 
 &lt;h2 id=&quot;bigwig&quot;&gt;BigWig&lt;/h2&gt;
@@ -73,7 +450,7 @@ will eventually supercede webtool, appmon and the rest.&lt;/p&gt;
 &lt;p&gt;Our version of etop, a realtime-updating, sortable process list:&lt;/p&gt;
 
 &lt;p&gt;&lt;a href=&quot;/images/bigwig/etop.png&quot;&gt;
-    &lt;img src=&quot;/images/bigwig/etop.png&quot; alt=&quot;&quot; title=&quot;Bigwig's erlang process viewer&quot; width=&quot;500&quot; class=&quot;aligncenter size-full&quot; /&gt;
+    &lt;img src=&quot;/images/bigwig/etop.png&quot; alt=&quot;&quot; title=&quot;Bigwig&apos;s erlang process viewer&quot; width=&quot;500&quot; class=&quot;aligncenter size-full&quot; /&gt;
 &lt;/a&gt;&lt;/p&gt;
 
 &lt;h3 id=&quot;process-info&quot;&gt;Process Info&lt;/h3&gt;
@@ -92,7 +469,7 @@ around and more nodes are loaded in on-demand, and changes are sent to the page
 updating the graph as they happen:&lt;/p&gt;
 
 &lt;p&gt;&lt;a href=&quot;/images/bigwig/appmon.png&quot;&gt;
-    &lt;img src=&quot;/images/bigwig/appmon.png&quot; alt=&quot;&quot; title=&quot;Bigwig's application explorer&quot; width=&quot;500&quot; class=&quot;aligncenter size-full&quot; /&gt;
+    &lt;img src=&quot;/images/bigwig/appmon.png&quot; alt=&quot;&quot; title=&quot;Bigwig&apos;s application explorer&quot; width=&quot;500&quot; class=&quot;aligncenter size-full&quot; /&gt;
 &lt;/a&gt;&lt;/p&gt;
 
 &lt;h3 id=&quot;sasl-report-browser&quot;&gt;SASL Report Browser&lt;/h3&gt;
@@ -118,7 +495,7 @@ installed, according to release_handler, and details about the VM.&lt;/p&gt;
 &lt;p&gt;We ran out of time at the weekend, so you just see the JSON for now:&lt;/p&gt;
 
 &lt;p&gt;&lt;a href=&quot;/images/bigwig/dashboard.png&quot;&gt;
-    &lt;img src=&quot;/images/bigwig/dashboard.png&quot; alt=&quot;&quot; title=&quot;Bigwig's dashboard&quot; width=&quot;500&quot; class=&quot;aligncenter size-full&quot; /&gt;
+    &lt;img src=&quot;/images/bigwig/dashboard.png&quot; alt=&quot;&quot; title=&quot;Bigwig&apos;s dashboard&quot; width=&quot;500&quot; class=&quot;aligncenter size-full&quot; /&gt;
 &lt;/a&gt;&lt;/p&gt;
 
 &lt;h2 id=&quot;bigwig-architecture&quot;&gt;BigWig Architecture&lt;/h2&gt;
@@ -140,9 +517,9 @@ Erlang&lt;/a&gt;. Licensed the same as Erlang/OTP.&lt;/p&gt;
 &lt;p&gt;Check the readme - installing and running is easy!&lt;/p&gt;
 
 </description>
-        <pubDate>Mon, 11 Jul 2011 00:00:00 +0100</pubDate>
-        <link>/article/bigwig-erlang-webtool-spawnfest</link>
-        <guid isPermaLink="true">/article/bigwig-erlang-webtool-spawnfest</guid>
+        <pubDate>Mon, 11 Jul 2011 00:00:00 -0500</pubDate>
+        <link>http://0.0.0.0:4000/article/bigwig-erlang-webtool-spawnfest</link>
+        <guid isPermaLink="true">http://0.0.0.0:4000/article/bigwig-erlang-webtool-spawnfest</guid>
         
         <category>programming</category>
         
@@ -615,9 +992,9 @@ because I needed exponential backoff / more control over restarting crashed chil
 myself, so I can’t use the normal appup process to call code_change.&lt;/p&gt;
 
 </description>
-        <pubDate>Sat, 26 Mar 2011 00:00:00 +0000</pubDate>
-        <link>/article/erlang-rebar-tutorial-generating-releases-upgrades</link>
-        <guid isPermaLink="true">/article/erlang-rebar-tutorial-generating-releases-upgrades</guid>
+        <pubDate>Sat, 26 Mar 2011 00:00:00 -0500</pubDate>
+        <link>http://0.0.0.0:4000/article/erlang-rebar-tutorial-generating-releases-upgrades</link>
+        <guid isPermaLink="true">http://0.0.0.0:4000/article/erlang-rebar-tutorial-generating-releases-upgrades</guid>
         
         <category>programming</category>
         
@@ -636,7 +1013,7 @@ myself, so I can’t use the normal appup process to call code_change.&lt;/p&gt;
     
       <item>
         <title>Erlang/OTP releases: rebar, release_handler, .appup, etc</title>
-        <description>&lt;p&gt;I’ve been building something in Erlang recently, provisionally called &lt;a title=&quot;It's the Gmail of IRC, honest!&quot; href=&quot;https://irccloud.com/&quot; target=&quot;_blank&quot;&gt;IRCCloud.com&lt;/a&gt; (mention this post if you request an invite!) - it’s an in-browser IRC client that stays connected for you all the time, so you never miss the conversation. You can reopen your browser later and still have all the backlog. &lt;a title=&quot;IRC: still damn useful&quot; href=&quot;http://www.metabrew.com/article/how-we-use-irc-at-lastfm&quot; target=&quot;_blank&quot;&gt;IRC is damn useful&lt;/a&gt;, and &lt;a title=&quot;James Wheare: International man of mystery&quot; href=&quot;http://james.wheare.org/&quot; target=&quot;_blank&quot;&gt;James&lt;/a&gt; and I are building IRCCloud to give you the advantages of IRC bouncer-esque functionality, with the ease of just opening a webpage.&lt;/p&gt;
+        <description>&lt;p&gt;I’ve been building something in Erlang recently, provisionally called &lt;a title=&quot;It&apos;s the Gmail of IRC, honest!&quot; href=&quot;https://irccloud.com/&quot; target=&quot;_blank&quot;&gt;IRCCloud.com&lt;/a&gt; (mention this post if you request an invite!) - it’s an in-browser IRC client that stays connected for you all the time, so you never miss the conversation. You can reopen your browser later and still have all the backlog. &lt;a title=&quot;IRC: still damn useful&quot; href=&quot;http://www.metabrew.com/article/how-we-use-irc-at-lastfm&quot; target=&quot;_blank&quot;&gt;IRC is damn useful&lt;/a&gt;, and &lt;a title=&quot;James Wheare: International man of mystery&quot; href=&quot;http://james.wheare.org/&quot; target=&quot;_blank&quot;&gt;James&lt;/a&gt; and I are building IRCCloud to give you the advantages of IRC bouncer-esque functionality, with the ease of just opening a webpage.&lt;/p&gt;
 
 &lt;p&gt;The Erlang backend is connected to various IRC servers on behalf of our users, so it’s critical that I can deploy new versions of the app without restarting. Erlang’s capability to do live upgrades to running applications means it’s possible to deploy new versions of the backend without disconnecting everybody. I’ve done a fair amount of Erlang before, but I’ve only recently managed to get proper live-updates to running OTP applications working.&lt;/p&gt;
 
@@ -715,7 +1092,7 @@ unzip &lt;span class=&quot;nv&quot;&gt;$f&lt;/span&gt; &amp;amp;gt&lt;span class
 &lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;echo
 cd&lt;/span&gt; ../releases/
 &lt;span class=&quot;c&quot;&gt;# Get the version of the only release in the system, our new app:&lt;/span&gt;
-&lt;span class=&quot;nv&quot;&gt;VER&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;sb&quot;&gt;`&lt;/span&gt;find &lt;span class=&quot;nb&quot;&gt;.&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;-maxdepth&lt;/span&gt; 1 &lt;span class=&quot;nt&quot;&gt;-type&lt;/span&gt; d | &lt;span class=&quot;nb&quot;&gt;grep&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;-vE&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;'^\.$'&lt;/span&gt; | &lt;span class=&quot;nb&quot;&gt;head&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;-n1&lt;/span&gt; | &lt;span class=&quot;nb&quot;&gt;sed&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;'s/^\.\///g'&lt;/span&gt;&lt;span class=&quot;sb&quot;&gt;`&lt;/span&gt;
+&lt;span class=&quot;nv&quot;&gt;VER&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;sb&quot;&gt;`&lt;/span&gt;find &lt;span class=&quot;nb&quot;&gt;.&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;-maxdepth&lt;/span&gt; 1 &lt;span class=&quot;nt&quot;&gt;-type&lt;/span&gt; d | &lt;span class=&quot;nb&quot;&gt;grep&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;-vE&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&apos;^\.$&apos;&lt;/span&gt; | &lt;span class=&quot;nb&quot;&gt;head&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;-n1&lt;/span&gt; | &lt;span class=&quot;nb&quot;&gt;sed&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&apos;s/^\.\///g&apos;&lt;/span&gt;&lt;span class=&quot;sb&quot;&gt;`&lt;/span&gt;
 &lt;span class=&quot;nb&quot;&gt;echo&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;Ver: &lt;/span&gt;&lt;span class=&quot;k&quot;&gt;${&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;VER&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;}&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;, renaming .rel + .boot files correctly&quot;&lt;/span&gt;
 &lt;span class=&quot;nb&quot;&gt;cd&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;${&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;VER&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;}&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&quot;&lt;/span&gt;
 &lt;span class=&quot;nb&quot;&gt;mv &lt;/span&gt;irccloud.boot start.boot
@@ -753,7 +1130,7 @@ cd&lt;/span&gt; ../releases/
 
 erl &lt;span class=&quot;nt&quot;&gt;-pz&lt;/span&gt; ../ebin/ &lt;span class=&quot;nt&quot;&gt;-pz&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;${&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;OLDEBIN&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;}&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&quot;&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;-pz&lt;/span&gt; ../deps/&lt;span class=&quot;k&quot;&gt;*&lt;/span&gt;/ebin &lt;span class=&quot;nt&quot;&gt;-noshell&lt;/span&gt; &lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
 &lt;span class=&quot;nt&quot;&gt;-run&lt;/span&gt; release_helper go irccloud &lt;span class=&quot;nv&quot;&gt;$VER&lt;/span&gt; ../ebin &lt;span class=&quot;nv&quot;&gt;$OLDVER&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;${&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;OLDEBIN&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;}&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&quot;&lt;/span&gt; &lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
-| &lt;span class=&quot;nb&quot;&gt;grep&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;-v&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;'Source code not found'&lt;/span&gt;
+| &lt;span class=&quot;nb&quot;&gt;grep&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;-v&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&apos;Source code not found&apos;&lt;/span&gt;
 
 &lt;span class=&quot;nb&quot;&gt;echo&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;Release &lt;/span&gt;&lt;span class=&quot;k&quot;&gt;${&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;VER&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;}&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt; packaged&quot;&lt;/span&gt;
 &lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
@@ -781,7 +1158,7 @@ erl &lt;span class=&quot;nt&quot;&gt;-pz&lt;/span&gt; ../ebin/ &lt;span class=&q
 
 &lt;span class=&quot;nf&quot;&gt;appver&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;A&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;when&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;is_atom&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;A&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;
   &lt;span class=&quot;nn&quot;&gt;application&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;load&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;A&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;),&lt;/span&gt;
-  &lt;span class=&quot;nn&quot;&gt;io&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;format&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;Version of '&lt;/span&gt;&lt;span class=&quot;si&quot;&gt;~p&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;'..&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;A&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]),&lt;/span&gt;
+  &lt;span class=&quot;nn&quot;&gt;io&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;format&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;Version of &apos;&lt;/span&gt;&lt;span class=&quot;si&quot;&gt;~p&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&apos;..&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;A&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]),&lt;/span&gt;
   &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;value&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;A&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;_,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;Ret&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;}}&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;lists&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;keysearch&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;A&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;application&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;loaded_applications&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()),&lt;/span&gt;
   &lt;span class=&quot;nn&quot;&gt;io&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;format&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;si&quot;&gt;~p~n&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;Ret&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]),&lt;/span&gt;
   &lt;span class=&quot;nv&quot;&gt;Ret&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;
@@ -805,7 +1182,7 @@ erl &lt;span class=&quot;nt&quot;&gt;-pz&lt;/span&gt; ../ebin/ &lt;span class=&q
   &lt;span class=&quot;nv&quot;&gt;Erts&lt;/span&gt;      &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;erlang&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;system_info&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;version&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;),&lt;/span&gt;
   &lt;span class=&quot;nv&quot;&gt;Vsn&lt;/span&gt;       &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;io_lib&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;format&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;si&quot;&gt;~s&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;si&quot;&gt;~s&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;Name&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;Version&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]),&lt;/span&gt;
   &lt;span class=&quot;nv&quot;&gt;PrevVsn&lt;/span&gt;   &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;io_lib&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;format&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;si&quot;&gt;~s&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;si&quot;&gt;~s&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;Name&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;PVersion&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]),&lt;/span&gt;
-  &lt;span class=&quot;nn&quot;&gt;io&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;format&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;version: '&lt;/span&gt;&lt;span class=&quot;si&quot;&gt;~s&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;si&quot;&gt;~n&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;Version&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]),&lt;/span&gt;
+  &lt;span class=&quot;nn&quot;&gt;io&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;format&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;version: &apos;&lt;/span&gt;&lt;span class=&quot;si&quot;&gt;~s&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&apos;&lt;/span&gt;&lt;span class=&quot;si&quot;&gt;~n&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;Version&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]),&lt;/span&gt;
   &lt;span class=&quot;nv&quot;&gt;AppVers&lt;/span&gt;   &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[{&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;A&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;appver&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;A&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)}&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;||&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;A&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;lt;-&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;?&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;RELAPPS&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;],&lt;/span&gt;
   &lt;span class=&quot;nv&quot;&gt;Rel&lt;/span&gt;       &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; 
 &lt;span class=&quot;s&quot;&gt;&quot;{release, 
@@ -835,7 +1212,7 @@ erl &lt;span class=&quot;nt&quot;&gt;-pz&lt;/span&gt; ../ebin/ &lt;span class=&q
 
 &lt;h2 id=&quot;making-a-second-release&quot;&gt;Making a second release&lt;/h2&gt;
 
-&lt;p&gt;Here's how I currently make a new release that can be deployed with a live-upgrade:&lt;/p&gt;
+&lt;p&gt;Here&apos;s how I currently make a new release that can be deployed with a live-upgrade:&lt;/p&gt;
 &lt;ol&gt;
 &lt;li&gt;Fix bugs, change some stuff, add features etc;&lt;/li&gt;
 &lt;li&gt;Update ebin/irccloud.app to increase the version number, update the modules list if needed;&lt;/li&gt;
@@ -843,7 +1220,7 @@ erl &lt;span class=&quot;nt&quot;&gt;-pz&lt;/span&gt; ../ebin/ &lt;span class=&q
 &lt;li&gt;&lt;code&gt;cd releases/&lt;/code&gt;&lt;/li&gt;
 &lt;li&gt;&lt;code&gt;./release_helper.sh &quot;../rel/irccloud&quot; &quot;1&quot; &quot;2&quot;&lt;/code&gt; # (where &quot;1&quot; was the version of the first release using rebar generate, &quot;2&quot; is the new one we want to package)&lt;/li&gt;
 &lt;/ol&gt;
-&lt;p&gt;Now I have irccloud-2.tar.gz in the releases/ directory, ready to be deployed. My packaging scripts also tag the release in git and a few other things I've omitted for clarity.&lt;/p&gt;
+&lt;p&gt;Now I have irccloud-2.tar.gz in the releases/ directory, ready to be deployed. My packaging scripts also tag the release in git and a few other things I&apos;ve omitted for clarity.&lt;/p&gt;
 &lt;h2&gt;Deploying the release&lt;/h2&gt;
 &lt;ol&gt;
 &lt;li&gt;&lt;code&gt;$ cp irccloud-2.tar.gz ../rel/irccloud/releases&lt;/code&gt; # or copy to whereever you put your target system on the production box instead of ../rel/irccloud&lt;/li&gt;
@@ -856,29 +1233,29 @@ erl &lt;span class=&quot;nt&quot;&gt;-pz&lt;/span&gt; ../ebin/ &lt;span class=&q
 If you wrote your .appup properly, it is also safe to downgrade - just do &lt;code&gt;release_helper:install_release(&quot;1&quot;).&lt;/code&gt; after step 3.&lt;/p&gt;
 &lt;p&gt;Note, you must run erl with &quot;-boot start_sasl&quot; to use release_manager. I ran this from the same shell as &quot;bin/irccloud console&quot; which already had sasl running.&lt;/p&gt;
 &lt;h2&gt;Mochiweb caveat&lt;/h2&gt;
-&lt;p&gt;I'm using the excellent &lt;a title=&quot;Mochiweb: I love it.&quot; href=&quot;http://github.com/mochi/mochiweb&quot; target=&quot;_blank&quot;&gt;Mochiweb HTTP library&lt;/a&gt; in my application. Here's the child specification from my top level supervisor:&lt;/p&gt;
+&lt;p&gt;I&apos;m using the excellent &lt;a title=&quot;Mochiweb: I love it.&quot; href=&quot;http://github.com/mochi/mochiweb&quot; target=&quot;_blank&quot;&gt;Mochiweb HTTP library&lt;/a&gt; in my application. Here&apos;s the child specification from my top level supervisor:&lt;/p&gt;
 &lt;pre lang=&quot;erlang&quot;&gt;{irccloud_web,
     {irccloud_web, start, [WebConfig]},
      permanent, 5000, worker, dynamic}&lt;/pre&gt;
-&lt;p&gt;Note that it says 'dynamic' in place of the modules list. Here's what the &lt;a href=&quot;http://erldocs.com/R14A/stdlib/supervisor.html&quot;&gt;fine manual&lt;/a&gt; says:&lt;/p&gt;
+&lt;p&gt;Note that it says &apos;dynamic&apos; in place of the modules list. Here&apos;s what the &lt;a href=&quot;http://erldocs.com/R14A/stdlib/supervisor.html&quot;&gt;fine manual&lt;/a&gt; says:&lt;/p&gt;
 &lt;blockquote&gt;&lt;p&gt;&lt;strong&gt;Modules&lt;/strong&gt; is used by the release handler during code replacement to determine which processes are using a certain module. As a rule of thumb Modules should be a list with one element [Module], where Module is the callback module, if the child process is a supervisor, gen_server or gen_fsm. If the child process is an event manager (gen_event) with a dynamic set of callback modules, Modules should be dynamic. See OTP Design Principles for more information about release handling.&lt;/p&gt;&lt;/blockquote&gt;
-&lt;p&gt;What it doesn't say is that release_handler will timeout and screw your install because it can't find the list of modules when dynamic is specified, unless you answer correctly.&lt;/p&gt;
-&lt;p&gt;Here's how to appease release_handler if you have a dynamic modules list: &lt;a href=&quot;http://github.com/RJ/mochiweb/commit/931c5fb769be844c307a51596898ca6c55998219&quot;&gt;http://github.com/RJ/mochiweb/commit/931c5fb769be844c307a51596898ca6c55998219&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;What it doesn&apos;t say is that release_handler will timeout and screw your install because it can&apos;t find the list of modules when dynamic is specified, unless you answer correctly.&lt;/p&gt;
+&lt;p&gt;Here&apos;s how to appease release_handler if you have a dynamic modules list: &lt;a href=&quot;http://github.com/RJ/mochiweb/commit/931c5fb769be844c307a51596898ca6c55998219&quot;&gt;http://github.com/RJ/mochiweb/commit/931c5fb769be844c307a51596898ca6c55998219&lt;/a&gt;&lt;/p&gt;
 &lt;h2&gt;In Conclusion&lt;/h2&gt;
 &lt;p&gt;In general, this was a rather painful experience.&lt;/p&gt;
-&lt;p&gt;What I'd like to be able to do is something like this:&lt;/p&gt;
+&lt;p&gt;What I&apos;d like to be able to do is something like this:&lt;/p&gt;
 &lt;ol&gt;
 &lt;li&gt;&quot;rebar make_tar newver=&amp;lt;newversion&amp;gt;&quot;&lt;/li&gt;
 &lt;li&gt;version in the .app file is automatically incremented for me, modules list is updated. (open $EDITOR for confirmation/additional tweaks)&lt;/li&gt;
 &lt;li&gt;Unless I manually wrote it already, .appup is automatically populated with {load_module, Mod} for each module that changed since last version was packaged, opened in $EDITOR so I can tweak/review.&lt;/li&gt;
 &lt;li&gt;irccloud-&amp;lt;newver&amp;gt;.tar.gz is created&lt;/li&gt;
 &lt;/ol&gt;
-&lt;p&gt;Maybe I've missed something, and there's a much easier way to package subsequent releases with rebar, or something else I've overlooked.&lt;br /&gt;
+&lt;p&gt;Maybe I&apos;ve missed something, and there&apos;s a much easier way to package subsequent releases with rebar, or something else I&apos;ve overlooked.&lt;br /&gt;
 How do you package and deploy your Erlang applications to do live-updates?&lt;/p&gt;
 </description>
-        <pubDate>Sat, 18 Sep 2010 00:00:00 +0100</pubDate>
-        <link>/article/erlangotp-releases-rebar-release_handler-appup-etc</link>
-        <guid isPermaLink="true">/article/erlangotp-releases-rebar-release_handler-appup-etc</guid>
+        <pubDate>Sat, 18 Sep 2010 00:00:00 -0500</pubDate>
+        <link>http://0.0.0.0:4000/article/erlangotp-releases-rebar-release_handler-appup-etc</link>
+        <guid isPermaLink="true">http://0.0.0.0:4000/article/erlangotp-releases-rebar-release_handler-appup-etc</guid>
         
         <category>programming</category>
         
@@ -908,22 +1285,22 @@ How do you package and deploy your Erlang applications to do live-updates?&lt;/p
       <item>
         <title>Rewriting Playdar: C++ to Erlang, massive savings</title>
         <description>&lt;p&gt;
-I've heard many anecdotes and claims about how many lines of code are saved when you write in Erlang instead of [C++/other language]. I'm happy to report that I now have first-hand experience and some data to share.
+I&apos;ve heard many anecdotes and claims about how many lines of code are saved when you write in Erlang instead of [C++/other language]. I&apos;m happy to report that I now have first-hand experience and some data to share.
 &lt;/p&gt;
 
 &lt;p&gt;
-I initially wrote Playdar in C++ (using Boost and Asio libraries), starting back in February this year. I was fortunate to be working with some experienced developers who helped me come to terms with C++. There were three of us hacking on it regularly up until a few months ago, and despite being relatively new to C++, I'll say that we ended up with a well designed and robust codebase, all things considered.
+I initially wrote Playdar in C++ (using Boost and Asio libraries), starting back in February this year. I was fortunate to be working with some experienced developers who helped me come to terms with C++. There were three of us hacking on it regularly up until a few months ago, and despite being relatively new to C++, I&apos;ll say that we ended up with a well designed and robust codebase, all things considered.
 &lt;/p&gt;
 
 &lt;h2&gt;On Feeling Smug&lt;/h2&gt;
 
 &lt;p&gt;
-I'll admit I felt rather smug making it all work in C++ with Boost and ASIO. Getting it to build on all three platforms and dynamically load extensions (DLLs etc) at runtime in a cross-platform way was also quite satisfying (I had plenty of help with that side of things).  I learned a lot about C++, Boost, ASIO and CMake. But, as the codebase grew, I began to seriously question my decision to use C++. 
+I&apos;ll admit I felt rather smug making it all work in C++ with Boost and ASIO. Getting it to build on all three platforms and dynamically load extensions (DLLs etc) at runtime in a cross-platform way was also quite satisfying (I had plenty of help with that side of things).  I learned a lot about C++, Boost, ASIO and CMake. But, as the codebase grew, I began to seriously question my decision to use C++. 
 &lt;/p&gt;
 &lt;p&gt;
 My initial reasons for choosing C++ were twofold:
 &lt;ul&gt;
-&lt;li&gt;Distribution - shipping the Erlang VM didn't sound like fun&lt;/li&gt;
+&lt;li&gt;Distribution - shipping the Erlang VM didn&apos;t sound like fun&lt;/li&gt;
 &lt;li&gt;&lt;a href=&quot;http://developer.kde.org/~wheeler/taglib.html&quot; target=&quot;taglib&quot;&gt;Taglib&lt;/a&gt;  - *the* library to read metadata from audio files (mp3, m4a, ogg etc) is C++&lt;/li&gt;
 &lt;/ul&gt;
 It turns out Playdar is naturally a good fit for Erlang - it does lots in parallel, and lots of stuff it does is asynchronous  and event based. Even with all the stuff you get with Boost, multithreaded stuff in C++ is inelegant, to put it kindly.
@@ -932,7 +1309,7 @@ It turns out Playdar is naturally a good fit for Erlang - it does lots in parall
 &lt;h2&gt;SLOCed and Loaded&lt;/h2&gt;
 
 &lt;p&gt;
-Anyway, a couple of weeks ago I sat down to re-implement Playdar from scratch in Erlang. I thrashed out the guts of it in a couple of days, and by the end of the week I almost had it 1:1 features with the C++ codebase. There's still a bit of C++ left - code to interface with taglib.
+Anyway, a couple of weeks ago I sat down to re-implement Playdar from scratch in Erlang. I thrashed out the guts of it in a couple of days, and by the end of the week I almost had it 1:1 features with the C++ codebase. There&apos;s still a bit of C++ left - code to interface with taglib.
 
 Using the SLOCcount tool (SLOC=source lines of code) I counted the lines of code in various modules from both codebases, here are the results:
 &lt;br /&gt;
@@ -982,33 +1359,33 @@ Using the SLOCcount tool (SLOC=source lines of code) I counted the lines of code
 &lt;strong&gt;
 75% less lines of code using Erlang compared to C++ to implement the same thing - not too shabby :)
 &lt;/strong&gt;
-The second time around writing in Erlang I knew exactly what I was building, so it's unfair to compare development time of the two codebases, but given how fast I can type I reckon I saved a good few hours of just pounding the keyboard to input the code (and countless hours of debugging: Erlang tends to work first time, really). Well I'm not sure if &quot;saved&quot; is the right word, considering It was working in C++ already, but it's my time to waste :)
+The second time around writing in Erlang I knew exactly what I was building, so it&apos;s unfair to compare development time of the two codebases, but given how fast I can type I reckon I saved a good few hours of just pounding the keyboard to input the code (and countless hours of debugging: Erlang tends to work first time, really). Well I&apos;m not sure if &quot;saved&quot; is the right word, considering It was working in C++ already, but it&apos;s my time to waste :)
 &lt;/p&gt;
 &lt;p&gt;
-If you count the third party code bundled with both codebases (excluding boost/asio!) then the erlang codebase saves a whopping 92%. I'm more interested in the savings in code I had to write, however.
+If you count the third party code bundled with both codebases (excluding boost/asio!) then the erlang codebase saves a whopping 92%. I&apos;m more interested in the savings in code I had to write, however.
 &lt;/p&gt;
 &lt;h2&gt;Memory and CPU Usage&lt;/h2&gt;
 
 &lt;p&gt;
-I've done some preliminary comparisons between both projects, when it comes to CPU and memory usage both projects are pretty similar. The Erlang codebase uses slightly more memory than C++ at the moment, but I'm convinced I can get that down to at least as low as the C++ project was. I picked up a few optimization tricks from my three-part &lt;a href=&quot;http://www.metabrew.com/article/a-million-user-comet-application-with-mochiweb-part-1/&quot;&gt;Million-user comet experiment&lt;/a&gt; in Erlang earlier this year. I'll post more about this if I learn any new tricks.
+I&apos;ve done some preliminary comparisons between both projects, when it comes to CPU and memory usage both projects are pretty similar. The Erlang codebase uses slightly more memory than C++ at the moment, but I&apos;m convinced I can get that down to at least as low as the C++ project was. I picked up a few optimization tricks from my three-part &lt;a href=&quot;http://www.metabrew.com/article/a-million-user-comet-application-with-mochiweb-part-1/&quot;&gt;Million-user comet experiment&lt;/a&gt; in Erlang earlier this year. I&apos;ll post more about this if I learn any new tricks.
 &lt;/p&gt;
 &lt;p&gt;
-One thing I've realised about the Erlang codebase is that I've used processes to encapsulate state (active queries, specifically)  where I didn't really need to. It seemed sensible at the time, but it's probably just a waste of memory. I'm going to change it to spawn processes to get the work done (ie, a process that runs the query) but not necessarily just to maintain state.
+One thing I&apos;ve realised about the Erlang codebase is that I&apos;ve used processes to encapsulate state (active queries, specifically)  where I didn&apos;t really need to. It seemed sensible at the time, but it&apos;s probably just a waste of memory. I&apos;m going to change it to spawn processes to get the work done (ie, a process that runs the query) but not necessarily just to maintain state.
 &lt;/p&gt;
 
 &lt;h2&gt;Distribution to the desktop&lt;/h2&gt;
 
 &lt;h3&gt;C++&lt;/h3&gt;
 &lt;p&gt;
-You just have to make sure that you build everything and ship with any DLLs along with checks in the installer for system libraries needed (runtime dlls). Oh, and make sure you don't change the plugin binary interface in the main app, or new plugins will crash and burn when you load them. Add a check for that. Oh and be careful about compiling taglib and stuff with mingw and the rest with VC++, or things might mysteriously crash. Also I heard a horror story about allocating memory in plugin code but deallocating it in the main app when the plugin was compiled against a different stdlib than the main app. This is all par for the course, and the experienced C++ developers I asked for help had no trouble making it work. &lt;strong&gt;Size of installable pacakge: 2.5MB&lt;/strong&gt;
+You just have to make sure that you build everything and ship with any DLLs along with checks in the installer for system libraries needed (runtime dlls). Oh, and make sure you don&apos;t change the plugin binary interface in the main app, or new plugins will crash and burn when you load them. Add a check for that. Oh and be careful about compiling taglib and stuff with mingw and the rest with VC++, or things might mysteriously crash. Also I heard a horror story about allocating memory in plugin code but deallocating it in the main app when the plugin was compiled against a different stdlib than the main app. This is all par for the course, and the experienced C++ developers I asked for help had no trouble making it work. &lt;strong&gt;Size of installable pacakge: 2.5MB&lt;/strong&gt;
 &lt;/p&gt;
 &lt;h3&gt;Erlang&lt;/h3&gt;
 &lt;p&gt;
-Compiling, and building/loading plugins in the Erlang codebase is straightforward on all platforms, as is often the way with VMs. I was against shipping the Erlang VM originally because I figured it would be a lot of hassle and increase the download size substantially. Packaging an Erlang app for the desktop involves taking the installed VM directory structure and stripping out all the docs, source and parts of the Erlang stdlib we don't use, then packaging it along with the compiled Playdar code. &lt;a href=&quot;http://couchdb.apache.org/&quot; target=&quot;cdb&quot;&gt;CouchDB&lt;/a&gt; does something like this too, and &lt;a href=&quot;http://www.rabbitmq.com/&quot; target=&quot;rabbit&quot;&gt;RabbitMQ&lt;/a&gt; ships the Erlang VM without stripping unneeded libs. We'll work on packaging some more (for all platforms), but to date &lt;a href=&quot;http://twitter.com/mxcl&quot;&gt;Max&lt;/a&gt; has crafted a package that contains the necessary bits of the Erlang VM, a sexy Prefpane to start/stop the daemon on OS X, and the compiled Playdar code all &lt;strong&gt;weighing in under 10MB.&lt;/strong&gt;
+Compiling, and building/loading plugins in the Erlang codebase is straightforward on all platforms, as is often the way with VMs. I was against shipping the Erlang VM originally because I figured it would be a lot of hassle and increase the download size substantially. Packaging an Erlang app for the desktop involves taking the installed VM directory structure and stripping out all the docs, source and parts of the Erlang stdlib we don&apos;t use, then packaging it along with the compiled Playdar code. &lt;a href=&quot;http://couchdb.apache.org/&quot; target=&quot;cdb&quot;&gt;CouchDB&lt;/a&gt; does something like this too, and &lt;a href=&quot;http://www.rabbitmq.com/&quot; target=&quot;rabbit&quot;&gt;RabbitMQ&lt;/a&gt; ships the Erlang VM without stripping unneeded libs. We&apos;ll work on packaging some more (for all platforms), but to date &lt;a href=&quot;http://twitter.com/mxcl&quot;&gt;Max&lt;/a&gt; has crafted a package that contains the necessary bits of the Erlang VM, a sexy Prefpane to start/stop the daemon on OS X, and the compiled Playdar code all &lt;strong&gt;weighing in under 10MB.&lt;/strong&gt;
 &lt;/p&gt;
 &lt;p&gt;
-We'll put together a Windows installer soon that'll probably be around the same size. A 10MB download isn't so bad nowadays, and I expect we can optimize the packaging process some more. Linux users will get a package that depends on the erlang VM in their package manager.
-Seems like shipping Erlang apps to the desktop isn't so hard after all.
+We&apos;ll put together a Windows installer soon that&apos;ll probably be around the same size. A 10MB download isn&apos;t so bad nowadays, and I expect we can optimize the packaging process some more. Linux users will get a package that depends on the erlang VM in their package manager.
+Seems like shipping Erlang apps to the desktop isn&apos;t so hard after all.
 &lt;/p&gt;
 &lt;h2&gt;tl;dr&lt;/h2&gt;
 &lt;p&gt;
@@ -1025,9 +1402,9 @@ You should read this &lt;a href=&quot;http://musicmachinery.com/2009/10/18/playi
 &lt;strong&gt;Playdar is the future, and the future is written in Erlang :)&lt;/strong&gt;
 &lt;/p&gt;
 </description>
-        <pubDate>Wed, 21 Oct 2009 00:00:00 +0100</pubDate>
-        <link>/article/rewriting-playdar-c-to-erlang-massive-savings</link>
-        <guid isPermaLink="true">/article/rewriting-playdar-c-to-erlang-massive-savings</guid>
+        <pubDate>Wed, 21 Oct 2009 00:00:00 -0500</pubDate>
+        <link>http://0.0.0.0:4000/article/rewriting-playdar-c-to-erlang-massive-savings</link>
+        <guid isPermaLink="true">http://0.0.0.0:4000/article/rewriting-playdar-c-to-erlang-massive-savings</guid>
         
         <category>programming</category>
         
@@ -1135,9 +1512,9 @@ stats
 
 &lt;p&gt;&lt;a href=&quot;http://www.playdar.org/&quot; target=&quot;_blank&quot;&gt;http://www.playdar.org/&lt;/a&gt;&lt;/p&gt;
 </description>
-        <pubDate>Thu, 08 Oct 2009 00:00:00 +0100</pubDate>
-        <link>/article/erlang-talk-at-london-hackspace</link>
-        <guid isPermaLink="true">/article/erlang-talk-at-london-hackspace</guid>
+        <pubDate>Thu, 08 Oct 2009 00:00:00 -0500</pubDate>
+        <link>http://0.0.0.0:4000/article/erlang-talk-at-london-hackspace</link>
+        <guid isPermaLink="true">http://0.0.0.0:4000/article/erlang-talk-at-london-hackspace</guid>
         
         <category>uncategorized</category>
         
@@ -1162,10 +1539,10 @@ stats
 
 &lt;p&gt;Perhaps you’re considering using a dedicated key-value or document store instead of a traditional relational database. Reasons for this might include:&lt;/p&gt;
 &lt;ol&gt;
-	&lt;li&gt;You're suffering from Cloud-computing Mania.&lt;/li&gt;
-	&lt;li&gt;You need an excuse to 'get your Erlang on'&lt;/li&gt;
+	&lt;li&gt;You&apos;re suffering from Cloud-computing Mania.&lt;/li&gt;
+	&lt;li&gt;You need an excuse to &apos;get your Erlang on&apos;&lt;/li&gt;
 	&lt;li&gt;You heard CouchDB was cool.&lt;/li&gt;
-	&lt;li&gt;You hate MySQL, and although PostgreSQL is much better, it still doesn't have decent replication. There's no chance you're buying Oracle licenses.&lt;/li&gt;
+	&lt;li&gt;You hate MySQL, and although PostgreSQL is much better, it still doesn&apos;t have decent replication. There&apos;s no chance you&apos;re buying Oracle licenses.&lt;/li&gt;
 	&lt;li&gt;Your data is stored and retrieved mainly by primary key, without complex joins.&lt;/li&gt;
 	&lt;li&gt;You have a non-trivial amount of data, and the thought of managing lots of RDBMS shards and replication failure scenarios gives you the fear.&lt;/li&gt;
 &lt;/ol&gt;
@@ -1181,17 +1558,17 @@ stats
 &lt;/li&gt;
 
 &lt;li&gt;
-  &lt;a href=&quot;http://www.allthingsdistributed.com/2007/10/amazons_dynamo.html&quot;&gt;Amazon's Dynamo Paper&lt;/a&gt;, 
+  &lt;a href=&quot;http://www.allthingsdistributed.com/2007/10/amazons_dynamo.html&quot;&gt;Amazon&apos;s Dynamo Paper&lt;/a&gt;, 
   and &lt;a href=&quot;http://www.readwriteweb.com/archives/amazon_dynamo.php&quot;&gt;this ReadWriteWeb article about Dynamo&lt;/a&gt; which explains why such a system is invaluable
 &lt;/li&gt;
 
 &lt;li&gt;
-    &lt;a href=&quot;http://aws.amazon.com/simpledb/&quot;&gt;Amazon's SimpleDB Service&lt;/a&gt;, 
+    &lt;a href=&quot;http://aws.amazon.com/simpledb/&quot;&gt;Amazon&apos;s SimpleDB Service&lt;/a&gt;, 
     and &lt;a href=&quot;http://gigaom.com/2007/12/14/amazon-simple-db/&quot;&gt;some&lt;/a&gt;
     &lt;a href=&quot;http://www.satine.org/archives/2007/12/13/amazon-simpledb/&quot;&gt;commentary&lt;/a&gt;
 &lt;/li&gt;
-&lt;li&gt;&lt;a href=&quot;http://labs.google.com/papers/bigtable.html&quot;&gt;Google's BigTable paper&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;&lt;a href=&quot;http://en.wikipedia.org/wiki/Paxos_algorithm&quot;&gt;The Paxos Algorithm&lt;/a&gt; - read this page in order to appreciate that knocking up a Paxos implementation isn't something you'd want to do whilst hungover on a Saturday morning.&lt;/li&gt;
+&lt;li&gt;&lt;a href=&quot;http://labs.google.com/papers/bigtable.html&quot;&gt;Google&apos;s BigTable paper&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&quot;http://en.wikipedia.org/wiki/Paxos_algorithm&quot;&gt;The Paxos Algorithm&lt;/a&gt; - read this page in order to appreciate that knocking up a Paxos implementation isn&apos;t something you&apos;d want to do whilst hungover on a Saturday morning.&lt;/li&gt;
 &lt;/ul&gt;
 
 &lt;h3 id=&quot;the-shortlist&quot;&gt;The Shortlist&lt;/h3&gt;
@@ -1399,9 +1776,9 @@ stats
 
 &lt;p&gt;&lt;em&gt;UPDATE 1:&lt;/em&gt; Corrected table: memcachedb does replication, as per BerkeleyDB.&lt;/p&gt;
 </description>
-        <pubDate>Mon, 19 Jan 2009 00:00:00 +0000</pubDate>
-        <link>/article/anti-rdbms-a-list-of-distributed-key-value-stores</link>
-        <guid isPermaLink="true">/article/anti-rdbms-a-list-of-distributed-key-value-stores</guid>
+        <pubDate>Mon, 19 Jan 2009 00:00:00 -0600</pubDate>
+        <link>http://0.0.0.0:4000/article/anti-rdbms-a-list-of-distributed-key-value-stores</link>
+        <guid isPermaLink="true">http://0.0.0.0:4000/article/anti-rdbms-a-list-of-distributed-key-value-stores</guid>
         
         <category>programming</category>
         
@@ -1463,9 +1840,9 @@ stats
 
 &lt;p&gt;&lt;a title=&quot;IRCcat source on GitHub&quot; href=&quot;http://github.com/RJ/irccat/tree/master&quot; target=&quot;_blank&quot;&gt;http://github.com/RJ/irccat/tree/master&lt;/a&gt;&lt;/p&gt;
 </description>
-        <pubDate>Thu, 08 Jan 2009 00:00:00 +0000</pubDate>
-        <link>/article/how-we-use-irc-at-lastfm</link>
-        <guid isPermaLink="true">/article/how-we-use-irc-at-lastfm</guid>
+        <pubDate>Thu, 08 Jan 2009 00:00:00 -0600</pubDate>
+        <link>http://0.0.0.0:4000/article/how-we-use-irc-at-lastfm</link>
+        <guid isPermaLink="true">http://0.0.0.0:4000/article/how-we-use-irc-at-lastfm</guid>
         
         <category>programming</category>
         
@@ -1474,455 +1851,6 @@ stats
         <category>irc</category>
         
         <category>java</category>
-        
-        
-      </item>
-    
-      <item>
-        <title>Getting to know ejabberd and writing modules</title>
-        <description>&lt;p&gt;I started poking around in the ejabberd source code to see what I could learn. I couldn’t find much in the way of high level documentation that talks about how the various bits of ejabberd talk to each other, so I’m starting to piece it together myself.&lt;/p&gt;
-
-&lt;p&gt;After compiling ejabberd I made a php script I could use with the external authentication system. Here’s a version that supports just two hardcoded users:&lt;/p&gt;
-
-&lt;p&gt;ejabberd.cfg:&lt;/p&gt;
-&lt;div class=&quot;language-erlang highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;auth_method&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;external&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;}.&lt;/span&gt;
-&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;extauth_program&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;/tmp/auth.php&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;}.&lt;/span&gt;
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;auth.php:&lt;/p&gt;
-&lt;div class=&quot;language-php highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;c1&quot;&gt;#!/usr/bin/php&lt;/span&gt;
-&lt;span class=&quot;o&quot;&gt;&amp;lt;?&lt;/span&gt;
-&lt;span class=&quot;nv&quot;&gt;$fh&lt;/span&gt;  &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;fopen&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&quot;php://stdin&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;'r'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
-&lt;span class=&quot;k&quot;&gt;if&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;!&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$fh&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;){&lt;/span&gt;
-    &lt;span class=&quot;k&quot;&gt;die&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&quot;Cannot open STDIN&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\n&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
-&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
-&lt;span class=&quot;nv&quot;&gt;$users&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;array&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;'user1'&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&amp;gt;&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;'password1'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;'user2'&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&amp;gt;&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;'password2'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
-
-&lt;span class=&quot;k&quot;&gt;do&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
-    &lt;span class=&quot;nv&quot;&gt;$lenBytes&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;fgets&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$fh&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;3&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
-    &lt;span class=&quot;nv&quot;&gt;$len&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;unpack&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;'n'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$lenBytes&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
-    &lt;span class=&quot;nv&quot;&gt;$len&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$len&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
-    &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$len&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;continue&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
-    &lt;span class=&quot;nv&quot;&gt;$msg&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;fgets&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$fh&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$len&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;+&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
-    &lt;span class=&quot;nv&quot;&gt;$toks&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;explode&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;':'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$msg&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
-    &lt;span class=&quot;nv&quot;&gt;$method&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;array_shift&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$toks&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
-    &lt;span class=&quot;k&quot;&gt;switch&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$method&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;){&lt;/span&gt;
-        &lt;span class=&quot;k&quot;&gt;case&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;'auth'&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt;
-            &lt;span class=&quot;k&quot;&gt;list&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$username&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$server&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$password&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$toks&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
-            &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;@&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$users&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$username&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$password&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;){&lt;/span&gt;
-                &lt;span class=&quot;k&quot;&gt;print&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;pack&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&quot;nn&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// ok&lt;/span&gt;
-            &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;else&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
-                &lt;span class=&quot;k&quot;&gt;print&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;pack&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&quot;nn&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// fail&lt;/span&gt;
-            &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
-            &lt;span class=&quot;k&quot;&gt;break&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
-
-        &lt;span class=&quot;k&quot;&gt;case&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;'isuser'&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt;
-            &lt;span class=&quot;k&quot;&gt;list&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$username&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$server&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$toks&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
-            &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;isset&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$users&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$username&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;])){&lt;/span&gt;
-                &lt;span class=&quot;k&quot;&gt;print&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;pack&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&quot;nn&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// yes&lt;/span&gt;
-            &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;else&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
-                &lt;span class=&quot;k&quot;&gt;print&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;pack&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&quot;nn&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// nope&lt;/span&gt;
-            &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
-            &lt;span class=&quot;k&quot;&gt;break&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
-
-        &lt;span class=&quot;k&quot;&gt;default&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt;
-            &lt;span class=&quot;k&quot;&gt;print&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;pack&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&quot;nn&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;&lt;span class=&quot;c1&quot;&gt;// fail&lt;/span&gt;
-    &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
-&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;while&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kc&quot;&gt;true&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;I stripped down the ejabberd config to just load what I considered the bare essentials. Here is the modules section I’m testing with:&lt;/p&gt;
-
-&lt;p&gt;From ejabberd.cfg:&lt;/p&gt;
-&lt;div class=&quot;language-erlang highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;modules&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
- &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;
-  &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;mod_caps&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;     &lt;span class=&quot;p&quot;&gt;[]},&lt;/span&gt;
-  &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;mod_disco&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;    &lt;span class=&quot;p&quot;&gt;[]},&lt;/span&gt;
-  &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;mod_roster&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;   &lt;span class=&quot;p&quot;&gt;[]},&lt;/span&gt;
-  &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;mod_pubsub&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;   &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt; &lt;span class=&quot;c&quot;&gt;% requires mod_caps
-&lt;/span&gt;                  &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;access_createnode&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;pubsub_createnode&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;},&lt;/span&gt;
-                  &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;plugins&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;default&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;pep&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]}&lt;/span&gt;
-                 &lt;span class=&quot;p&quot;&gt;]},&lt;/span&gt;
-  &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;mod_mnesiaweb&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;     &lt;span class=&quot;p&quot;&gt;[]},&lt;/span&gt;
-  &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;mod_thriftctl&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;     &lt;span class=&quot;p&quot;&gt;[]}&lt;/span&gt;
- &lt;span class=&quot;p&quot;&gt;]}.&lt;/span&gt;
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;&lt;em&gt;mod_disco&lt;/em&gt; deals with discovery, so clients can find out what the server supports. mod_roster deals with rosters (buddy lists etc) using mnesia. mod_pubsub is enabled because I want to use &lt;a href=&quot;http://xmpp.org/extensions/xep-0118.html&quot;&gt;User Tune&lt;/a&gt;, an extension that lets you broadcast the name of the song you are playing to all everyone in your roster. mod_caps provides &lt;a href=&quot;http://xmpp.org/extensions/xep-0115.html&quot;&gt;XEP-115&lt;/a&gt; - an extension for broadcasting and dynamically discovering client, device, or generic entity capabilities. mod_caps is a requirement of mod_pubsub.&lt;/p&gt;
-
-&lt;p&gt;I’ve removed the module that allows users to register, although I made a few accounts first whilst testing. The last two modules, mod_mnesiaweb and mod_thriftctl are modules I wrote.&lt;/p&gt;
-
-&lt;h2 id=&quot;mod_mnesiaweb&quot;&gt;mod_mnesiaweb&lt;/h2&gt;
-
-&lt;p&gt;To help figure out what’s going on inside of ejabberd, it’s useful to be able to easily browse the mnesia database. &lt;a href=&quot;http://yaws.hyber.org/&quot;&gt;Yaws&lt;/a&gt; comes with an appmod that does this, called ymnesia. This ejabberd module will start yaws in embedded mode and run this appmod, enabling you to explore the mnesia database from a web browser.&lt;/p&gt;
-
-&lt;p&gt;&lt;i&gt;&lt;b&gt;Yaws observation:&lt;/b&gt; yaws didn’t appear to build ymnesia by default, I edited the Makefile in src and added “ymnesia” to the module list. Also, if ./configure fails, the package you are probably missing is libpam0g-dev&lt;/i&gt;&lt;/p&gt;
-
-&lt;p&gt;mod_mnesiaweb:&lt;/p&gt;
-&lt;div class=&quot;language-erlang highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;c&quot;&gt;% Ejabberd module that runs yaws in embedded mode,
-% and loads the ymnesia appmod for browsing mnesia.
-&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;ni&quot;&gt;module&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;mod_mnesiaweb&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;).&lt;/span&gt;
-&lt;span class=&quot;p&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;ni&quot;&gt;author&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;'rj@last.fm'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;).&lt;/span&gt;
-
-&lt;span class=&quot;p&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;ni&quot;&gt;include&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;/usr/local/lib/yaws/include/yaws.hrl&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;).&lt;/span&gt;
-
-&lt;span class=&quot;p&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;ni&quot;&gt;behaviour&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;gen_mod&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;).&lt;/span&gt;
-&lt;span class=&quot;p&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;ni&quot;&gt;export&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;([&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;start&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;stop&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]).&lt;/span&gt;
-
-&lt;span class=&quot;nf&quot;&gt;start&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(_&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;Host&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;Opts&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;
-    &lt;span class=&quot;nv&quot;&gt;Port&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;gen_mod&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;get_opt&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;port&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;Opts&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;8001&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;),&lt;/span&gt;
-    &lt;span class=&quot;nn&quot;&gt;code&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;add_path&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;/usr/local/lib/yaws/ebin&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;),&lt;/span&gt;
-    &lt;span class=&quot;nn&quot;&gt;application&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;set_env&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;yaws&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;embedded&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;true&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;),&lt;/span&gt;
-    &lt;span class=&quot;nn&quot;&gt;application&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;start&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;yaws&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;),&lt;/span&gt;
-    &lt;span class=&quot;nv&quot;&gt;GC&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;yaws_config&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;make_default_gconf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;false&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;yawstest&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;),&lt;/span&gt;
-    &lt;span class=&quot;nv&quot;&gt;SC&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nl&quot;&gt;#sconf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
-        &lt;span class=&quot;n&quot;&gt;port&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;Port&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
-        &lt;span class=&quot;n&quot;&gt;servername&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;ejabnesia&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
-        &lt;span class=&quot;n&quot;&gt;listen&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;},&lt;/span&gt;
-        &lt;span class=&quot;n&quot;&gt;appmods&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[{&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;showdb&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;ymnesia&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;}],&lt;/span&gt;
-        &lt;span class=&quot;n&quot;&gt;docroot&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;wwwroot&quot;&lt;/span&gt;
-        &lt;span class=&quot;p&quot;&gt;},&lt;/span&gt;
-    &lt;span class=&quot;nn&quot;&gt;yaws_api&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;setconf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;GC&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[[&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;SC&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]]),&lt;/span&gt;
-    &lt;span class=&quot;n&quot;&gt;ok&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;
-
-&lt;span class=&quot;nf&quot;&gt;stop&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(_&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;Host&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;
-    &lt;span class=&quot;nn&quot;&gt;application&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;stop&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;yaws&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;),&lt;/span&gt;
-    &lt;span class=&quot;n&quot;&gt;ok&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;To compile it:&lt;/p&gt;
-&lt;div class=&quot;language-console highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;gp&quot;&gt;erlc -pa $&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;EJAB_SRC&lt;span class=&quot;o&quot;&gt;}&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;-I&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;${&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;EJAB_SRC&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;}&lt;/span&gt; mod_mnesiaweb.erl
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;where EJAB_SRC is the ejabberd-2.X.X/src directory, after you’ve compiled from source (so the beams are there too).&lt;/p&gt;
-
-&lt;p&gt;Copy the resulting mod_mnesiaweb.beam to /var/lib/ejabberd/ebin so ejabberd finds it, and it should work. Hit up http://localhost:8001/showdb/ in your browser and you can explore the mnesia database.&lt;/p&gt;
-
-&lt;p&gt;Use the match syntax to filter tables. For example to find everyone in my roster, I use this in the input box next to roster:&lt;/p&gt;
-
-&lt;div class=&quot;language-erlang highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;roster&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,{&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;RJ&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;'_'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;'_'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;'_'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,[]}},&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;'_'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;'_'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;'_'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;'_'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;'_'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;'_'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;'_'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;'_'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;Not pretty, but it gets the job done. You can just view the entire table, copy a record then replace fields with ‘_’ to build queries.&lt;/p&gt;
-
-&lt;h2 id=&quot;mod_thriftctl&quot;&gt;mod_thriftctl&lt;/h2&gt;
-&lt;p&gt;Next up I wanted to try the Erlang &lt;a href=&quot;http://incubator.apache.org/thrift/&quot;&gt;Thrift&lt;/a&gt; bindings (written by the folks at &lt;a href=&quot;http://amiest-devblog.blogspot.com/2008/01/alternative-erlang-bindings-for-thrift.html&quot;&gt;Amie St.&lt;/a&gt;), and expose some useful functionality for controlling the server.&lt;/p&gt;
-
-&lt;p&gt;If you aren’t familiar with Thrift, I recommend reading about it first. In a nutshell, you write your API using an IDL (a .thrift file) and the thrift compiler creates client libraries, and server code in various different languages. It’s an RPC mechanism, and useful in a mixed environment.&lt;/p&gt;
-
-&lt;p&gt;mod_thriftctl.thrift:&lt;/p&gt;
-&lt;div class=&quot;language-php highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;c1&quot;&gt;#!/usr/local/bin/thrift -php -erl&lt;/span&gt;
-
-&lt;span class=&quot;n&quot;&gt;struct&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;JabberUser&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
-    &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;string&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;name&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
-    &lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;string&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;server&lt;/span&gt;
-&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
-
-&lt;span class=&quot;n&quot;&gt;service&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;Ejabthrift&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
-    &lt;span class=&quot;cm&quot;&gt;/* add ruser to roster of luser, and visa-versa. also routes presence to users if online  */&lt;/span&gt;
-    &lt;span class=&quot;n&quot;&gt;void&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;add_friend&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;        &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;JabberUser&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;luser&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
-                            &lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;JabberUser&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;ruser&lt;/span&gt;
-                            &lt;span class=&quot;p&quot;&gt;),&lt;/span&gt;
-
-    &lt;span class=&quot;cm&quot;&gt;/* remove ruser from luser's roster */&lt;/span&gt;
-    &lt;span class=&quot;n&quot;&gt;void&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;remove_friend&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;    &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;JabberUser&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;luser&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;JabberUser&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;ruser&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;),&lt;/span&gt;
-
-    &lt;span class=&quot;cm&quot;&gt;/* make it look like fromuser sent a message to touser */&lt;/span&gt;
-    &lt;span class=&quot;n&quot;&gt;void&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;spoof_message&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;JabberUser&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;fromuser&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;JabberUser&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;touser&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;3&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;string&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;message&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;4&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;string&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;subject&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;),&lt;/span&gt;
-    &lt;span class=&quot;cm&quot;&gt;/* .. or a chat message */&lt;/span&gt;
-    &lt;span class=&quot;n&quot;&gt;void&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;spoof_chat&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;    &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;JabberUser&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;fromuser&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;JabberUser&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;touser&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;3&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;string&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;message&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;4&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;string&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;thread&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;),&lt;/span&gt;
-
-    &lt;span class=&quot;cm&quot;&gt;/* sends PEP usertune message, see http://xmpp.org/extensions/xep-0118.html */&lt;/span&gt;
-    &lt;span class=&quot;n&quot;&gt;void&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;publish_np&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;JabberUser&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;fromuser&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;string&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;artist&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;3&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;string&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;album&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;4&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;string&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;track&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;5&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;i32&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;tracklength&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;6&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;i32&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;tracknum&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
-&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;Run that .thrift file, and you get gen-php and gen-erl directories, with php client code, and erlang files needed to build a server.&lt;/p&gt;
-
-&lt;p&gt;Here’s the ejabberd module, which starts a thrift server:&lt;/p&gt;
-
-&lt;p&gt;mod_thriftctl:&lt;/p&gt;
-&lt;div class=&quot;language-erlang highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;c&quot;&gt;%
-% A module to control ejabberd with a thrift interface.
-%
-&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;ni&quot;&gt;module&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;mod_thriftctl&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;).&lt;/span&gt;
-&lt;span class=&quot;p&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;ni&quot;&gt;author&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;'rj@last.fm'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;).&lt;/span&gt;
-
-&lt;span class=&quot;c&quot;&gt;% ejabberd headers:
-&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;ni&quot;&gt;include&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;ejabberd.hrl&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;).&lt;/span&gt;
-&lt;span class=&quot;p&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;ni&quot;&gt;include&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;mod_roster.hrl&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;).&lt;/span&gt;
-&lt;span class=&quot;p&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;ni&quot;&gt;include&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;jlib.hrl&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;).&lt;/span&gt;
-
-&lt;span class=&quot;c&quot;&gt;% thrift server headers:
-&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;ni&quot;&gt;include&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;thrift.hrl&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;).&lt;/span&gt;
-&lt;span class=&quot;p&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;ni&quot;&gt;include&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;transport/tSocket.hrl&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;).&lt;/span&gt;
-&lt;span class=&quot;p&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;ni&quot;&gt;include&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;protocol/tBinaryProtocol.hrl&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;).&lt;/span&gt;
-&lt;span class=&quot;p&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;ni&quot;&gt;include&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;server/tErlServer.hrl&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;).&lt;/span&gt;
-&lt;span class=&quot;p&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;ni&quot;&gt;include&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;transport/tErlAcceptor.hrl&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;).&lt;/span&gt;
-
-&lt;span class=&quot;c&quot;&gt;% we are an ejabberd module:
-&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;ni&quot;&gt;behaviour&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;gen_mod&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;).&lt;/span&gt;
-&lt;span class=&quot;p&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;ni&quot;&gt;export&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;([&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;start&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;stop&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]).&lt;/span&gt;
-
-&lt;span class=&quot;c&quot;&gt;% our thrift service:
-&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;ni&quot;&gt;include&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;ejabthrift_thrift.hrl&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;).&lt;/span&gt;
-&lt;span class=&quot;p&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;ni&quot;&gt;include&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;mod_thriftctl_types.hrl&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;).&lt;/span&gt;
-&lt;span class=&quot;p&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;ni&quot;&gt;export&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;([&lt;/span&gt;   &lt;span class=&quot;n&quot;&gt;add_friend&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;remove_friend&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
-            &lt;span class=&quot;n&quot;&gt;spoof_message&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;4&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;spoof_chat&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;4&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
-            &lt;span class=&quot;n&quot;&gt;publish_np&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;6&lt;/span&gt;
-        &lt;span class=&quot;p&quot;&gt;]).&lt;/span&gt;
-
-&lt;span class=&quot;c&quot;&gt;% convert thrift Jabberuser into ejabberd jid
-&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;ju2jid&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;Jabberuser&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;when&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;is_record&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;Jabberuser&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;jabberUser&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;
-    &lt;span class=&quot;nl&quot;&gt;#jid&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;user&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;Jabberuser&lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;#jabberUser.name&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;server&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;Jabberuser&lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;#jabberUser.server&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;resource&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
-          &lt;span class=&quot;n&quot;&gt;luser&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;Jabberuser&lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;#jabberUser.name&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;lserver&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;Jabberuser&lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;#jabberUser.server&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;lresource&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&quot;&lt;/span&gt;
-        &lt;span class=&quot;p&quot;&gt;}.&lt;/span&gt;
-
-&lt;span class=&quot;nf&quot;&gt;spoof_message&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;FromU&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;ToU&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;Msg&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;Subject&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;
-    &lt;span class=&quot;nv&quot;&gt;F&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;ju2jid&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;FromU&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;),&lt;/span&gt;
-    &lt;span class=&quot;nv&quot;&gt;T&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;ju2jid&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;ToU&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;),&lt;/span&gt;
-    &lt;span class=&quot;nv&quot;&gt;XmlBody&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;xmlelement&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;message&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
-               &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;
-                &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;from&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;jlib&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;jid_to_string&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;F&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)},&lt;/span&gt;
-                &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;to&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;jlib&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;jid_to_string&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;T&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)}&lt;/span&gt;
-               &lt;span class=&quot;p&quot;&gt;],&lt;/span&gt;
-               &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;
-               &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;xmlelement&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;subject&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[],&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[{&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;xmlcdata&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;Subject&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;}]},&lt;/span&gt;
-               &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;xmlelement&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;body&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[],&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[{&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;xmlcdata&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;Msg&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;}]}&lt;/span&gt;
-               &lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;
-              &lt;span class=&quot;p&quot;&gt;},&lt;/span&gt;
-    &lt;span class=&quot;nn&quot;&gt;ejabberd_router&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;route&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;F&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;T&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;XmlBody&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;).&lt;/span&gt;
-
-&lt;span class=&quot;nf&quot;&gt;spoof_chat&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;FromU&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;ToU&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;Msg&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;Thread&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;
-    &lt;span class=&quot;nv&quot;&gt;F&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;ju2jid&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;FromU&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;),&lt;/span&gt;
-    &lt;span class=&quot;nv&quot;&gt;T&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;ju2jid&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;ToU&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;),&lt;/span&gt;
-    &lt;span class=&quot;nv&quot;&gt;XmlBody&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;xmlelement&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;message&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
-               &lt;span class=&quot;p&quot;&gt;[{&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;type&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;chat&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;},&lt;/span&gt;
-                &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;from&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;jlib&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;jid_to_string&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;F&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)},&lt;/span&gt;
-                &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;to&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;jlib&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;jid_to_string&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;T&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)}&lt;/span&gt;
-               &lt;span class=&quot;p&quot;&gt;],&lt;/span&gt;
-               &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;
-               &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;xmlelement&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;thread&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[],&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[{&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;xmlcdata&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;Thread&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;}]},&lt;/span&gt;
-               &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;xmlelement&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;body&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[],&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[{&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;xmlcdata&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;Msg&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;}]}&lt;/span&gt;
-               &lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;
-              &lt;span class=&quot;p&quot;&gt;},&lt;/span&gt;
-    &lt;span class=&quot;nn&quot;&gt;ejabberd_router&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;route&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;F&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;T&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;XmlBody&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;).&lt;/span&gt;
-
-&lt;span class=&quot;nf&quot;&gt;publish_np&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;FromU&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;ArtistS&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;AlbumS&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;TrackS&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;LengthI&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;TrackNumI&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;
-    &lt;span class=&quot;nv&quot;&gt;From&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;ju2jid&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;FromU&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;),&lt;/span&gt;
-    &lt;span class=&quot;c&quot;&gt;% The usertune message must contain binaries, not strings or ints
-&lt;/span&gt;    &lt;span class=&quot;nv&quot;&gt;FromStr&lt;/span&gt;     &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;jlib&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;jid_to_string&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;From&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;),&lt;/span&gt;
-    &lt;span class=&quot;nv&quot;&gt;Artist&lt;/span&gt;      &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;list_to_binary&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;ArtistS&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;),&lt;/span&gt;
-    &lt;span class=&quot;nv&quot;&gt;Album&lt;/span&gt;       &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;list_to_binary&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;AlbumS&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;),&lt;/span&gt;
-    &lt;span class=&quot;nv&quot;&gt;Track&lt;/span&gt;       &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;list_to_binary&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;TrackS&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;),&lt;/span&gt;
-    &lt;span class=&quot;nv&quot;&gt;Length&lt;/span&gt;      &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;list_to_binary&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nn&quot;&gt;io_lib&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;format&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;si&quot;&gt;~w&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,[&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;LengthI&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;])),&lt;/span&gt;
-    &lt;span class=&quot;nv&quot;&gt;TrackNum&lt;/span&gt;    &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;list_to_binary&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nn&quot;&gt;io_lib&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;format&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;si&quot;&gt;~w&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,[&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;TrackNumI&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;])),&lt;/span&gt;
-    &lt;span class=&quot;nv&quot;&gt;Xml&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;xmlelement&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;iq&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
-                &lt;span class=&quot;p&quot;&gt;[{&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;from&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;FromStr&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;},&lt;/span&gt;
-                 &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;type&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;set&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;},&lt;/span&gt;
-                 &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;id&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;pub1&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;}],&lt;/span&gt;
-                &lt;span class=&quot;p&quot;&gt;[{&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;xmlcdata&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;lt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\n&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;  &quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;gt;&amp;gt;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;},&lt;/span&gt;
-                 &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;xmlelement&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;pubsub&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
-                  &lt;span class=&quot;p&quot;&gt;[{&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;xmlns&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;http://jabber.org/protocol/pubsub&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;}],&lt;/span&gt;
-                  &lt;span class=&quot;p&quot;&gt;[{&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;xmlcdata&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;lt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\n&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;    &quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;gt;&amp;gt;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;},&lt;/span&gt;
-                   &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;xmlelement&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;publish&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
-                    &lt;span class=&quot;p&quot;&gt;[{&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;node&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;http://jabber.org/protocol/tune&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;}],&lt;/span&gt;
-                    &lt;span class=&quot;p&quot;&gt;[{&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;xmlcdata&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;lt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\n&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;      &quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;gt;&amp;gt;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;},&lt;/span&gt;
-                     &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;xmlelement&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;item&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,[],&lt;/span&gt;
-                      &lt;span class=&quot;p&quot;&gt;[{&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;xmlcdata&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;lt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\n&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;        &quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;gt;&amp;gt;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;},&lt;/span&gt;
-                       &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;xmlelement&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;tune&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
-                        &lt;span class=&quot;p&quot;&gt;[{&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;xmlns&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;http://jabber.org/protocol/tune&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;}],&lt;/span&gt;
-                        &lt;span class=&quot;p&quot;&gt;[{&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;xmlcdata&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;lt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\n&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;          &quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;gt;&amp;gt;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;},&lt;/span&gt;
-                         &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;xmlelement&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;artist&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,[],&lt;/span&gt;
-                          &lt;span class=&quot;p&quot;&gt;[{&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;xmlcdata&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;Artist&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;}]},&lt;/span&gt;
-                         &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;xmlcdata&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;lt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\n&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;          &quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;gt;&amp;gt;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;},&lt;/span&gt;
-                         &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;xmlelement&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;length&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,[],[{&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;xmlcdata&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;Length&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;}]},&lt;/span&gt;
-                         &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;xmlcdata&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;lt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\n&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;          &quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;gt;&amp;gt;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;},&lt;/span&gt;
-                         &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;xmlelement&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;source&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,[],&lt;/span&gt;
-                          &lt;span class=&quot;p&quot;&gt;[{&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;xmlcdata&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;Album&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;}]},&lt;/span&gt;
-                         &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;xmlcdata&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;lt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\n&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;          &quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;gt;&amp;gt;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;},&lt;/span&gt;
-                         &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;xmlelement&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;title&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,[],&lt;/span&gt;
-                          &lt;span class=&quot;p&quot;&gt;[{&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;xmlcdata&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;Track&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;}]},&lt;/span&gt;
-                         &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;xmlcdata&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;lt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\n&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;          &quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;gt;&amp;gt;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;},&lt;/span&gt;
-                         &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;xmlelement&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;track&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,[],[{&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;xmlcdata&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;TrackNum&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;}]},&lt;/span&gt;
-                         &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;xmlcdata&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;lt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\n&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;        &quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;gt;&amp;gt;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;}]},&lt;/span&gt;
-                       &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;xmlcdata&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;lt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\n&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;      &quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;gt;&amp;gt;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;}]},&lt;/span&gt;
-                     &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;xmlcdata&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;lt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\n&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;    &quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;gt;&amp;gt;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;}]},&lt;/span&gt;
-                   &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;xmlcdata&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;lt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\n&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;  &quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;gt;&amp;gt;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;}]},&lt;/span&gt;
-                 &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;xmlcdata&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;lt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\n&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;gt;&amp;gt;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;}]},&lt;/span&gt;
-    &lt;span class=&quot;c&quot;&gt;% PEP means you act as a pubsub node yourself,
-&lt;/span&gt;    &lt;span class=&quot;c&quot;&gt;% so it's addressed to yourself and is broadcast to your friends automatically:
-&lt;/span&gt;    &lt;span class=&quot;nn&quot;&gt;ejabberd_router&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;route&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;From&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;From&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;Xml&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;),&lt;/span&gt;
-    &lt;span class=&quot;n&quot;&gt;ok&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;
-
-&lt;span class=&quot;c&quot;&gt;% adds bi-directional friend relationship immediately for both users.
-&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;add_friend&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;     &lt;span class=&quot;nl&quot;&gt;#jabberUser&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;name&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;LU&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;server&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;LS&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;},&lt;/span&gt;
-                &lt;span class=&quot;nl&quot;&gt;#jabberUser&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;name&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;RU&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;server&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;RS&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;})&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;
-    &lt;span class=&quot;nv&quot;&gt;AskMessage&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
-    &lt;span class=&quot;nv&quot;&gt;Group&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
-    &lt;span class=&quot;nv&quot;&gt;Subtype&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;both&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
-    &lt;span class=&quot;nf&quot;&gt;subscribe&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;LU&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;LS&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;RU&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;RS&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;RU&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;Group&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;Subtype&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;AskMessage&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;),&lt;/span&gt;
-    &lt;span class=&quot;nf&quot;&gt;subscribe&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;RU&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;RS&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;LU&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;LS&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;LU&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;Group&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;Subtype&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;AskMessage&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;),&lt;/span&gt;
-    &lt;span class=&quot;nf&quot;&gt;route_rosteritem&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;LU&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;LS&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;RU&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;RS&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;RU&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;Group&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;Subtype&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;),&lt;/span&gt;
-    &lt;span class=&quot;nf&quot;&gt;route_rosteritem&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;RU&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;RS&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;LU&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;LS&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;LU&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;Group&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;Subtype&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;),&lt;/span&gt;
-    &lt;span class=&quot;n&quot;&gt;ok&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;
-
-&lt;span class=&quot;nf&quot;&gt;remove_friend&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt; &lt;span class=&quot;nl&quot;&gt;#jabberUser&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;name&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;LU&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;server&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;LS&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;},&lt;/span&gt; &lt;span class=&quot;nl&quot;&gt;#jabberUser&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;name&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;RU&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;server&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;RS&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;
-    &lt;span class=&quot;nf&quot;&gt;unsubscribe&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;LU&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;LS&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;RU&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;RS&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;),&lt;/span&gt;
-    &lt;span class=&quot;nf&quot;&gt;unsubscribe&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;RU&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;RS&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;LU&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;LS&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;),&lt;/span&gt;
-    &lt;span class=&quot;nf&quot;&gt;route_rosteritem&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;LU&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;LS&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;RU&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;RS&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;remove&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;),&lt;/span&gt;
-    &lt;span class=&quot;nf&quot;&gt;route_rosteritem&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;RU&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;RS&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;LU&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;LS&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;remove&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;),&lt;/span&gt;
-    &lt;span class=&quot;n&quot;&gt;ok&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;
-
-&lt;span class=&quot;nf&quot;&gt;unsubscribe&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;LocalUser&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;LocalServer&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;RemoteUser&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;RemoteServer&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;
-    &lt;span class=&quot;nv&quot;&gt;Key&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{{&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;LocalUser&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;LocalServer&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,{&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;RemoteUser&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;RemoteServer&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,[]}},&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;LocalUser&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;LocalServer&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;}},&lt;/span&gt;
-    &lt;span class=&quot;nn&quot;&gt;mnesia&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;transaction&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;fun&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;mnesia&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;delete&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;roster&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;Key&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;write&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;end&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;).&lt;/span&gt;
-
-&lt;span class=&quot;nf&quot;&gt;route_rosteritem&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;LocalUser&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;LocalServer&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;RemoteUser&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;RemoteServer&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;Nick&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;Group&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;Subscription&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;
-    &lt;span class=&quot;nv&quot;&gt;LJID&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;jlib&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;make_jid&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;LocalUser&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;LocalServer&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;),&lt;/span&gt;
-    &lt;span class=&quot;nv&quot;&gt;RJID&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;jlib&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;make_jid&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;RemoteUser&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;RemoteServer&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;),&lt;/span&gt;
-    &lt;span class=&quot;nv&quot;&gt;ToS&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;jlib&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;jid_to_string&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;LJID&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;),&lt;/span&gt;
-    &lt;span class=&quot;nv&quot;&gt;ItemJIDS&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;jlib&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;jid_to_string&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;RJID&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;),&lt;/span&gt;
-    &lt;span class=&quot;nv&quot;&gt;GroupXML&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;xmlelement&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;group&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[],&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[{&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;xmlcdata&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;Group&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;}]},&lt;/span&gt;
-    &lt;span class=&quot;nv&quot;&gt;Item&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;xmlelement&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;item&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
-        &lt;span class=&quot;p&quot;&gt;[{&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;jid&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;ItemJIDS&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;},&lt;/span&gt;
-         &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;name&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;Nick&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;},&lt;/span&gt;
-         &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;subscription&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;Subscription&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;}],&lt;/span&gt;
-        &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;GroupXML&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]},&lt;/span&gt;
-    &lt;span class=&quot;nv&quot;&gt;Query&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;xmlelement&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;query&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[{&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;xmlns&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;?&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;NS_ROSTER&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;}],&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;Item&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]},&lt;/span&gt;
-    &lt;span class=&quot;nv&quot;&gt;Packet&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;xmlelement&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;iq&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[{&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;type&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;set&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;},&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;to&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;ToS&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;}],&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;Query&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]},&lt;/span&gt;
-    &lt;span class=&quot;nn&quot;&gt;ejabberd_router&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;route&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;LJID&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;LJID&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;Packet&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;).&lt;/span&gt;
-
-
-&lt;span class=&quot;nf&quot;&gt;subscribe&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;LocalUser&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;LocalServer&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;RemoteUser&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;RemoteServer&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;Nick&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;Group&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;Subscription&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;Xattrs&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;
-    &lt;span class=&quot;nv&quot;&gt;R&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nl&quot;&gt;#roster&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;usj&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;LocalUser&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;LocalServer&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,{&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;RemoteUser&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;RemoteServer&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,[]}},&lt;/span&gt;
-                &lt;span class=&quot;n&quot;&gt;us&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;LocalUser&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;LocalServer&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;},&lt;/span&gt;
-                &lt;span class=&quot;n&quot;&gt;jid&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;RemoteUser&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;RemoteServer&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,[]},&lt;/span&gt;
-                &lt;span class=&quot;n&quot;&gt;name&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;Nick&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
-                &lt;span class=&quot;n&quot;&gt;subscription&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;Subscription&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;c&quot;&gt;% none, to=you see him, from=he sees you, both
-&lt;/span&gt;                &lt;span class=&quot;n&quot;&gt;ask&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;none&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;c&quot;&gt;% out=send request, in=somebody requests you, none
-&lt;/span&gt;                &lt;span class=&quot;n&quot;&gt;groups&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;Group&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;],&lt;/span&gt;
-                &lt;span class=&quot;n&quot;&gt;askmessage&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;Xattrs&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;c&quot;&gt;% example: [{&quot;category&quot;,&quot;conference&quot;}]
-&lt;/span&gt;                &lt;span class=&quot;n&quot;&gt;xs&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[]&lt;/span&gt;
-               &lt;span class=&quot;p&quot;&gt;},&lt;/span&gt;
-    &lt;span class=&quot;nn&quot;&gt;mnesia&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;transaction&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;fun&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;mnesia&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;write&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;R&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;end&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;).&lt;/span&gt;
-
-&lt;span class=&quot;nf&quot;&gt;start&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;Host&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;Opts&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;
-    &lt;span class=&quot;o&quot;&gt;?&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;INFO&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;mod_ejabthrift start().&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,[]),&lt;/span&gt;
-    &lt;span class=&quot;c&quot;&gt;%% get options
-&lt;/span&gt;    &lt;span class=&quot;nv&quot;&gt;Port&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;gen_mod&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;get_opt&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;port&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;Opts&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;9000&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;),&lt;/span&gt;
-
-    &lt;span class=&quot;nb&quot;&gt;spawn&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;fun&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;thrift&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;start&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;end&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;),&lt;/span&gt;
-    &lt;span class=&quot;o&quot;&gt;?&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;INFO&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;mod_ejabthrift thrift:start().&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,[]),&lt;/span&gt;
-
-    &lt;span class=&quot;nv&quot;&gt;Handler&lt;/span&gt;   &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;?&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;MODULE&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
-    &lt;span class=&quot;nv&quot;&gt;Processor&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;ejabthrift_thrift&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
-
-    &lt;span class=&quot;nv&quot;&gt;TF&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;tBufferedTransportFactory&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;new&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(),&lt;/span&gt;
-    &lt;span class=&quot;nv&quot;&gt;PF&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;tBinaryProtocolFactory&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;new&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(),&lt;/span&gt;
-
-    &lt;span class=&quot;nv&quot;&gt;ServerTransport&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;tErlAcceptor&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
-    &lt;span class=&quot;nv&quot;&gt;ServerFlavor&lt;/span&gt;    &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;tErlServer&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
-
-    &lt;span class=&quot;nv&quot;&gt;Server&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;oop&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;start_new&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;ServerFlavor&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;Port&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;Handler&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;Processor&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;ServerTransport&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;TF&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;PF&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]),&lt;/span&gt;
-
-    &lt;span class=&quot;k&quot;&gt;case&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;?&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;R0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;Server&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;effectful_serve&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;of&lt;/span&gt;
-    &lt;span class=&quot;n&quot;&gt;ok&lt;/span&gt;    &lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;
-        &lt;span class=&quot;o&quot;&gt;?&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;INFO&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;mod_ejabthrift: Thrift server (&lt;/span&gt;&lt;span class=&quot;si&quot;&gt;~s&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;) listening on port &lt;/span&gt;&lt;span class=&quot;si&quot;&gt;~w&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,[&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;Host&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;Port&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]),&lt;/span&gt;
-        &lt;span class=&quot;c&quot;&gt;% put Server into process dictionary (needed for clean stop)
-&lt;/span&gt;        &lt;span class=&quot;nb&quot;&gt;put&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;thrift_server_reference&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;Server&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;),&lt;/span&gt;
-        &lt;span class=&quot;n&quot;&gt;ok&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
-    &lt;span class=&quot;nv&quot;&gt;Error&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;
-        &lt;span class=&quot;o&quot;&gt;?&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;ERROR_MSG&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;mod_ejabthrift: Error starting thrift server: &lt;/span&gt;&lt;span class=&quot;si&quot;&gt;~w&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;Error&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]),&lt;/span&gt;
-        &lt;span class=&quot;nv&quot;&gt;Error&lt;/span&gt;
-    &lt;span class=&quot;k&quot;&gt;end&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;
-
-&lt;span class=&quot;nf&quot;&gt;stop&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(_&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;Host&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;
-    &lt;span class=&quot;o&quot;&gt;?&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;C0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;get&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;thrift_server_reference&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;),&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;stop&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;),&lt;/span&gt;
-    &lt;span class=&quot;n&quot;&gt;ok&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;To build, first build the gen-erl code:&lt;/p&gt;
-
-&lt;div class=&quot;language-console highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;gp&quot;&gt;erlc -pa $&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;EJAB_SRC&lt;span class=&quot;o&quot;&gt;}&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;-I&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;${&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;EJAB_SRC&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;}&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;-I&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;${&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;ERL_THRIFT&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;}&lt;/span&gt;/include &lt;span class=&quot;nt&quot;&gt;-I&lt;/span&gt; ./gen-erl &lt;span class=&quot;nt&quot;&gt;-o&lt;/span&gt; ./gen-erl ./gen-erl/&lt;span class=&quot;k&quot;&gt;*&lt;/span&gt;.erl
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;Where ERL_THRIFT is the lib/erl directory from the amiethrift code, git://repo.or.cz/amiethrift.git&lt;/p&gt;
-
-&lt;p&gt;Then compile the module:&lt;/p&gt;
-
-&lt;div class=&quot;language-console highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;gp&quot;&gt;erlc -pa $&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;EJAB_SRC&lt;span class=&quot;o&quot;&gt;}&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;-I&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;${&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;EJAB_SRC&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;}&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;-I&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;${&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;ERL_THRIFT&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;}&lt;/span&gt;/include &lt;span class=&quot;nt&quot;&gt;-I&lt;/span&gt; ./gen-erl &lt;span class=&quot;k&quot;&gt;*&lt;/span&gt;.erl
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;To install, copy all the beam files to the ejabberd ebin dir:&lt;/p&gt;
-
-&lt;div class=&quot;language-console highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;go&quot;&gt;sudo cp *.beam gen-erl/*.beam /var/lib/ejabberd/ebin/
-&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;This is inspired by mod_xmlrpc, which is in ejabberd-modules. As you can see from the start function, that’s what it takes to start a thrift server. It’s now trivial to call into ejabberd from other languages. For example, if you started listening to a song using a flash player on the website, a php webservice could make a user tune announcement on your behalf, or spoof messages from you boasting how much you love listening to Paris Hilton.&lt;/p&gt;
-
-&lt;p&gt;If anyone knows where I can read about the ejabberd architecture / design, so I don’t have to piece it all together myself, please let me know.&lt;/p&gt;
-</description>
-        <pubDate>Sun, 23 Nov 2008 00:00:00 +0000</pubDate>
-        <link>/article/getting-to-know-ejabberd-and-writing-modules</link>
-        <guid isPermaLink="true">/article/getting-to-know-ejabberd-and-writing-modules</guid>
-        
-        <category>programming</category>
-        
-        <category>erlang</category>
-        
-        <category>mnesia</category>
-        
-        <category>ejabberd</category>
-        
-        <category>xmpp</category>
-        
-        <category>thrift</category>
-        
-        <category>yaws</category>
-        
-        
-      </item>
-    
-      <item>
-        <title>ssh hack: connect directly to machine via a firewall box</title>
-        <description>&lt;p&gt;It’s common to have to ssh to firewall / gateway machine, then ssh to the machine you want to work on within a server network.&lt;/p&gt;
-
-&lt;p&gt;Typically you’d do this from your local machine:&lt;/p&gt;
-
-&lt;div class=&quot;language-console highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;gp&quot;&gt;$&lt;/span&gt;&lt;span class=&quot;w&quot;&gt; &lt;/span&gt;ssh firewall.example.com
-&lt;span class=&quot;go&quot;&gt;Password:
-&lt;/span&gt;&lt;span class=&quot;gp&quot;&gt;$&lt;/span&gt;&lt;span class=&quot;w&quot;&gt; &lt;/span&gt;ssh my-private-host
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;I finally got bored of doing this, and created the following file:
-&lt;em&gt;/usr/bin/sssh&lt;/em&gt;&lt;/p&gt;
-&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;c&quot;&gt;#!/bin/bash&lt;/span&gt;
-ssh &lt;span class=&quot;nt&quot;&gt;-oproxycommand&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&quot;ssh -q firewall.example.com nc -q0 %h %p&quot;&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$*&lt;/span&gt;
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;Now I can use the &lt;code&gt;sssh&lt;/code&gt; command to connect to hosts using the firewall machine as a proxy. Like most good hacks, this uses netcat.&lt;/p&gt;
-
-&lt;p&gt;Eg:&lt;/p&gt;
-&lt;div class=&quot;language-console highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;gp&quot;&gt;$&lt;/span&gt;&lt;span class=&quot;w&quot;&gt; &lt;/span&gt;sssh 10.1.2.3 
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;Will connect me directly to a machine on the server network, via the firewall box. Seeing as it passes all parameters to ssh (the &lt;code&gt;$*&lt;/code&gt; bit) you can do port forwards and X-forwarding as usual too:&lt;/p&gt;
-
-&lt;div class=&quot;language-console highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;gp&quot;&gt;$&lt;/span&gt;&lt;span class=&quot;w&quot;&gt; &lt;/span&gt;sssh &lt;span class=&quot;nt&quot;&gt;-L&lt;/span&gt; 5432:localhost:5432 my-vm
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;This lets me tunnel the port for a PostgreSQL running on my development vm (&lt;code&gt;my-vm&lt;/code&gt;) in a single command. I have all my keys installed, so no passwords needed - I estimate this will save me about 60 seconds every day.&lt;/p&gt;
-</description>
-        <pubDate>Mon, 17 Nov 2008 00:00:00 +0000</pubDate>
-        <link>/article/ssh-hack-connect-directly-to-machine-via-a-firewall-box</link>
-        <guid isPermaLink="true">/article/ssh-hack-connect-directly-to-machine-via-a-firewall-box</guid>
-        
-        <category>hacks</category>
-        
-        <category>hack</category>
-        
-        <category>ssh</category>
         
         
       </item>

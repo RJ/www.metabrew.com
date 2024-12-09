@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    
+        <!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>Rock and Rollback: Realtime multiplayer in the browser, with rust and bevy | Richard Jones</title>
+<meta name="generator" content="Jekyll v4.2.2" />
+<meta property="og:title" content="Rock and Rollback: Realtime multiplayer in the browser, with rust and bevy" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="How hard it is to build a realtime multiplayer browser game? Like asteroids, but multiplayer. Retro vibes with modern netcode 🚀." />
+<meta property="og:description" content="How hard it is to build a realtime multiplayer browser game? Like asteroids, but multiplayer. Retro vibes with modern netcode 🚀." />
+<link rel="canonical" href="http://0.0.0.0:4000/article/rock-and-rollback-realtime-multiplayer-games-with-bevy" />
+<meta property="og:url" content="http://0.0.0.0:4000/article/rock-and-rollback-realtime-multiplayer-games-with-bevy" />
+<meta property="og:site_name" content="Richard Jones" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2024-12-08T00:00:00-06:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="Rock and Rollback: Realtime multiplayer in the browser, with rust and bevy" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","dateModified":"2024-12-08T00:00:00-06:00","datePublished":"2024-12-08T00:00:00-06:00","description":"How hard it is to build a realtime multiplayer browser game? Like asteroids, but multiplayer. Retro vibes with modern netcode 🚀.","headline":"Rock and Rollback: Realtime multiplayer in the browser, with rust and bevy","mainEntityOfPage":{"@type":"WebPage","@id":"http://0.0.0.0:4000/article/rock-and-rollback-realtime-multiplayer-games-with-bevy"},"url":"http://0.0.0.0:4000/article/rock-and-rollback-realtime-multiplayer-games-with-bevy"}</script>
+<!-- End Jekyll SEO tag -->
+
+    
+
+    <link type="application/atom+xml" rel="alternate" href="http://0.0.0.0:4000/feed.xml" title="Richard Jones" />
+
+    <link rel="apple-touch-icon" sizes="180x180" href="/assets/favicon/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/assets/favicon/favicon-16x16.png">
+    <link rel="manifest" href="/assets/favicon/site.webmanifest">
+
+	<link href="https://fonts.googleapis.com/css?family=Crimson+Text:400,400i,600,600i|Karla:400,400i,700,700i" rel="stylesheet">
+
+    <link href="/assets/css/style.css" rel="stylesheet">
+</head>
+
+
+
+<body class="layout-post">
+    <div id="page" class="site">
+        <header id="masthead" class="site-header">
+    <div class="site-header-wrap">
+        <div class="site-header-inside">
+
+            <div class="site-branding">
+                
+                <p class="profile">
+                    <a href="/">
+                        <img src="/assets/images/rj-headshot.jpg" alt="'s Picture"
+                            class="avatar" />
+                    </a>
+                </p>
+                <div class="site-identity">
+                    
+                    <h1 class="site-title">
+                        <a href="/">Richard Jones</a>
+                    </h1>
+                    
+
+                    <p class="site-description">Logbook / blog / devlog</p>
+
+
+                </div><!-- .site-identity -->
+                
+                <button id="menu-toggle" class="menu-toggle"><span class="screen-reader-text">Main Menu</span><span
+                        class="icon-menu" aria-hidden="true"></span></button>
+            </div><!-- .site-branding -->
+
+            <nav id="main-navigation" class="site-navigation" aria-label="Main Navigation">
+                <div class="site-nav-wrap">
+                    <div class="site-nav-inside">
+                    <ul class="menu">
+                        
+                        
+                        
+                        <li class="menu-item "><a href="/">Home</a></li>
+                        
+                        
+                        
+                        <li class="menu-item "><a href="/about">About</a></li>
+                        
+                        
+                        
+                        <li class="menu-item "><a href="/contact">Contact Me</a></li>
+                        
+                        
+                        
+                        <li class="menu-item "><a href="/search">Search</a></li>
+                        
+                    </ul>
+
+                    <p class="social-links">
+
+    <a href="https://bsky.app/profile/metabrew.com" target="_blank">
+        <svg xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 576 512"><!--!Font Awesome Free 6.7.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.-->
+    <path
+        d="M123.6 34.5c66.4 50.1 137.9 151.5 164.2 206C314 186 385.5 84.5 452 34.5c48-36.1 125.6-64.1 125.6 24.9c0 17.8-10.1 149.2-16.1 170.5c-20.7 74.2-96.1 93.1-163.1 81.6c117.2 20 147 86.3 82.6 152.6C358.7 590 305.2 432.5 291.5 392.1c-2.5-7.5-3.7-10.9-3.7-7.9c0-3.1-1.2 .4-3.7 7.9C270.4 432.5 216.9 590 94.6 464.1C30.2 397.8 60 331.5 177.2 311.5C110.2 322.9 34.8 304 14.1 229.8C8.1 208.5-2 77.1-2 59.3c0-88.9 77.7-61 125.6-24.9z" />
+</svg>
+<!--
+Font Awesome Free 5.5.0 by @fontawesome - https://fontawesome.com
+License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License)
+-->
+    </a>
+
+    <a href="https://github.com/RJ" target="_blank">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg>
+<!--
+Font Awesome Free 5.5.0 by @fontawesome - https://fontawesome.com
+License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License)
+-->
+    </a>
+
+    <a href="https://www.last.fm/user/RJ" target="_blank">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path d="M400 32H48C21.5 32 0 53.5 0 80v352c0 26.5 21.5 48 48 48h352c26.5 0 48-21.5 48-48V80c0-26.5-21.5-48-48-48zm-92.2 312.9c-63.4 0-85.4-28.6-97.1-64.1c-16.3-51-21.5-84.3-63-84.3c-22.4 0-45.1 16.1-45.1 61.2c0 35.2 18 57.2 43.3 57.2c28.6 0 47.6-21.3 47.6-21.3l11.7 31.9s-19.8 19.4-61.2 19.4c-51.3 0-79.9-30.1-79.9-85.8c0-57.9 28.6-92 82.5-92c73.5 0 80.8 41.4 100.8 101.9c8.8 26.8 24.2 46.2 61.2 46.2c24.9 0 38.1-5.5 38.1-19.1c0-19.9-21.8-22-49.9-28.6c-30.4-7.3-42.5-23.1-42.5-48c0-40 32.3-52.4 65.2-52.4c37.4 0 60.1 13.6 63 46.6l-36.7 4.4c-1.5-15.8-11-22.4-28.6-22.4c-16.1 0-26 7.3-26 19.8c0 11 4.8 17.6 20.9 21.3c32.7 7.1 71.8 12 71.8 57.5c.1 36.7-30.7 50.6-76.1 50.6z"/></svg>
+    </a>
+
+    <a href="/rss.xml" target="_blank">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><path d="M128.081 415.959c0 35.369-28.672 64.041-64.041 64.041S0 451.328 0 415.959s28.672-64.041 64.041-64.041 64.04 28.673 64.04 64.041zm175.66 47.25c-8.354-154.6-132.185-278.587-286.95-286.95C7.656 175.765 0 183.105 0 192.253v48.069c0 8.415 6.49 15.472 14.887 16.018 111.832 7.284 201.473 96.702 208.772 208.772.547 8.397 7.604 14.887 16.018 14.887h48.069c9.149.001 16.489-7.655 15.995-16.79zm144.249.288C439.596 229.677 251.465 40.445 16.503 32.01 7.473 31.686 0 38.981 0 48.016v48.068c0 8.625 6.835 15.645 15.453 15.999 191.179 7.839 344.627 161.316 352.465 352.465.353 8.618 7.373 15.453 15.999 15.453h48.068c9.034-.001 16.329-7.474 16.005-16.504z"/></svg>
+<!--
+Font Awesome Free 5.5.0 by @fontawesome - https://fontawesome.com
+License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License)
+-->
+    </a>
+
+</p>
+
+                    </div><!-- .site-nav-inside -->
+                </div><!-- .site-nav-wrap -->
+            </nav><!-- .site-navigation -->
+
+            <!-- <div>
+                Foo bar
+
+            </div> -->
+
+        </div><!-- .site-header-inside -->
+    </div><!-- .site-header-wrap -->
+</header><!-- .site-header -->
+        <div id="content" class="site-content fadeInDown">
+            <div class="inner-wide">
+                    <main id="main" class="site-main">
+    
+        <article class="post-full inner">
+
+            <header class="post-header">
+                <div class="post-meta">
+                    Published <time class="post-date" datetime="2024-12-08">December 8,
+                        2024</time>
+                </div><!-- .post-meta -->
+                <h1 class="post-title">Rock and Rollback: Realtime multiplayer in the browser, with rust and bevy</h1>
+                
+                <div class="post-tags">
+                     
+                    <a href='/tag/gamedev/'>gamedev</a>
+                    
+                     
+                    <a href='/tag/netcode/'>netcode</a>
+                    
+                     
+                    <a href='/tag/multiplayer/'>multiplayer</a>
+                    
+                     
+                    <a href='/tag/bevy/'>bevy</a>
+                    
+                     
+                    <a href='/tag/bevygap/'>bevygap</a>
+                    
+                    
+                </div>
+                
+            </header><!-- .post-header -->
+
+            
+            <div class="post-content">
+                <p>How hard it is to build a realtime multiplayer browser game? Like asteroids, but multiplayer. Retro vibes with modern netcode 🚀.</p>
+
+<h3 id="realtime-multiplayer-in-the-browser">Realtime multiplayer in the browser</h3>
+
+<p>Until relatively recently, realtime multiplayer in the browser was hamstrung by the lack of an unreliable network transport. Everything the browser did was TCP, and <em>the</em> realtime option was websockets.</p>
+
+<p>TCP has head-of-line blocking though, because it’s a reliable ordered stream. If you’re streaming positional updates 60 times a second, and one of those packets is dropped or delayed, TCP won’t deliver any newly arrived packets to your game until the dropped one is retransmitted, effectively delaying all subsequent packets too. That’s why realtime netcode prefers UDP.</p>
+
+<p>With UDP it’s up to your game protocol to handle dropped packets, which is extra work, but means you can stream realtime data and not suffer the same issues as TCP. Packets are delivered to your game as soon as they arrive, regardless of any packet loss or delays.</p>
+
+<p>If only there was a way to do this in the browser..</p>
+
+<h4 id="browser-technologies-for-unreliable-datagrams">Browser technologies for unreliable datagrams</h4>
+
+<p><strong>WebRTC</strong>, which is designed for video and audio calling in the browser, has an Unreliable Datachannel option (UDP). This is suitable, but there is quite a lot of machinery required to present yourself as a WebRTC server just to open a data channel.</p>
+
+<p>The newish <strong>WebTransport</strong> API operates over <a href="https://en.wikipedia.org/wiki/HTTP/3">HTTP/3</a>, using QUIC – atop UDP. It supports unreliable data channels, and is less of a headache to use serverside. Nowadays this seems like a decent choice for the in-browser network layer for a realtime game.</p>
+
+<h2 id="choosing-a-network-model-abridged">Choosing a network model, abridged</h2>
+
+<p>To figure out how to network multiplayer asteroids, it behooves us to consider one of the most common approaches to netcode called <strong>Snapshot Interpolation</strong> – used by first person shooters for decades.</p>
+
+<h3 id="quake-et-al">Quake, et al.</h3>
+
+<p>Quake, and many FPS games that came after it, can be described as:</p>
+
+<p><strong>A bunch of players moving around a mostly static world, shooting at each other.</strong></p>
+
+<p>These games are continually sending your inputs (move forward, jump, shoot..) to the server. The server is simulating your character, along with the rest of the players, as inputs arrive. The server streams snapshots back to you containing up-to-date positions at specific points in time (each “tick”).</p>
+
+<p>To smooth out the movement, the game buffers incoming snapshots and interpolates between two recent ones to compute player positions. This gives silky smooth movement, but results in you seeing a slightly outdated position for other players.</p>
+
+<p>This is the standard approach for competetive FPS. You can tune the buffers to smooth over network lag spikes, at the cost of moving remote player timelines further into the past.</p>
+
+<h4 id="local-player-prediction-and-rollback">Local-player Prediction and Rollback</h4>
+
+<p>To further complicate matters, when you hit <code class="language-plaintext highlighter-rouge">W</code> to move forward, the game doesn’t wait for a server update before moving your own player’s position. <strong>Your own position is predicted, not interpolated</strong>, ie. when you press forward, your local player immediately moves forward, while your <code class="language-plaintext highlighter-rouge">I'm pressing W on tick 123</code> packet travels to the server. The server processes it, dutifully moves your player forward, and includes the new position in the next snapshot.</p>
+
+<p>Your game client, which kept a record of your predicted movement and inputs for the last few ticks, will need to reconcile this with updates received from the server. If the snapshot position at a given tick matches the position in your buffer at that tick, that’s ideal. If there was a misprediction, you wind back your position to the tick from the snapshot, snap your player to the snapshot-position, and replay any stored input commands to fast-forward your predicted location back to your current predicted tick on the client.</p>
+
+<h3 id="snapshot-interpolation-asteroids">Snapshot interpolation asteroids?</h3>
+
+<p>What happens if we apply this model to multiplayer asteroids? We predict movement of your own ship, just like FPS, and do snapshot interpolation for remote players and asteroids.</p>
+
+<p>The movement of players and asteroids would be nice and smooth, right up to the moment you collide with something.</p>
+
+<p>Your ship is locally predicted ahead of the server, based on your inputs. Remote asteroids or players are shown in the past, due to snapshot interpolation. So you’re essentially seeing the position of other objects but from (say) 75ms in the past.</p>
+
+<p>For a game that would surely involve lots of crashing into other players and asteroids, we don’t want janky collisions.</p>
+
+<h2 id="client-prediction--rollback-for-everything">Client Prediction &amp; Rollback for Everything</h2>
+
+<p>Asteroids are pretty simple, they just keep moving until they collide with something. So we’ll have our client project their position forward into the same timeline as the local player. This means we run same physics simulation code on the client as we do on the server.</p>
+
+<p>We’ll store a historical record for each entity: the last few frames of position/rotation. When we get a server update about a position, we can check it against our historical record for that tick. If there were any discrepencies, we perform a rollback: wind back time to the tick from the server update, snap positions to the server-authoritative position, and fast-forward back to our current tick, resimulating the physics as we go – and in the case of mispredicted players, re-applying any stored inputs.</p>
+
+<p>Any errors corrected after rollback, as a result of a misprediction, can be blended in visually over a few frames. Meanwhile the underlying state of the client’s physics always strives to be as correct as possible.</p>
+
+<h2 id="experiments-with-bevy">Experiments with Bevy</h2>
+
+<p>I did some experiments with the bevy game engine and a home-grown netcode/rollback system to explore what would work for multiplayer asteroids.</p>
+
+<h4 id="client-prediction-single-player">Client-prediction, single player</h4>
+
+<p>This experiment, with just one player connected to the server, predicts the position of asteroids into the same timeframe as the player. The grey outlines show the most recent position of the object received from the server. The server tick rate is set fairly low so it’s easy to see what’s happening. There were no mispredictions, because with just one player connected, everything is deterministic.</p>
+
+<figure>
+    <iframe width="560" height="315" src="https://www.youtube.com/embed/ZAbuYm6MS5s?si=qmnr3lyuJ0E-UWLh" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen=""></iframe>
+
+    
+    <figcaption class="caption-text">Client on the left, server on the right. 100ms simulated lag. No Audio.</figcaption>
+    
+</figure>
+
+<p>If you fullscreen this video, you’ll be able to see the light grey outline of each entity - that is the last received authoritative server position. The colored outlines are where the client has predicted them in the client timeline. No rollbacks or jank because with a single player, there aren’t any mispredictions.</p>
+
+<h4 id="timeline-jank-experiment">Timeline jank experiment</h4>
+
+<p>Here’s an experiment I conducted testing how collisions behave differently when asteroids are predicted forward into the same timeline as the local player.</p>
+
+<p>Movement looks good in isolation, however per my voiceover in the next video, remote players do get janky collisions.
+This is because of the temporal disrepency between remote players and other objects. With remote players
+held 6 frames in the past, which equates to around 100ms, there are janky collisions. Watch what happens to collisions when I enable input prediction for remote players, to bring them into the same timeframe as the local player and asteroids:</p>
+
+<figure>
+    <iframe width="560" height="315" src="https://www.youtube.com/embed/Jxetoat3wsw?si=xdB4BAlE2hz27Ugh" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen=""></iframe>
+
+    
+    <figcaption class="caption-text">Audio commentary – unmute! Each player has 70ms of simulated lag.</figcaption>
+    
+</figure>
+
+<h2 id="predicting-remote-players">Predicting Remote Players</h2>
+
+<p>Since we don’t have up-to-date inputs for remote players on our most recent ticks, we just assume they are still pressing the same buttons as the last-known input.
+Players holding down forward are most likely to still be holding down forward.</p>
+
+<p>This, plus smearing errors due to mispredictions over a couple of frames, can work pretty well, provided we keep player latency to a reasonable amount.</p>
+
+<p>We can also bake in 3 ticks of input delay for all players. So inputs a client presses are used for t+3, but sent to the server immediately and rebroadcast to other players. This means sometimes you do in fact have all inputs for remote players, or at least only have to guess 1 or 2 ticks worth.</p>
+
+<h2 id="implementation-details">Implementation Details</h2>
+
+<p>These experiments really helped me understand what kind of netcode model I needed – but I ended up throwing away most of the code I’d written. My rollback implementation was kind of a mess, being very new to rust, bevy, and gamedev in general. I was very happy to discover <a href="https://github.com/cBournhonesque/lightyear">Lightyear</a>, which has built-in prediction &amp; rollback, and WebTransport support that works on native and WASM builds.</p>
+
+<p>I contributed a basic asteroid-esque game to the Lightyear examples, called <a href="https://github.com/cBournhonesque/lightyear/tree/main/examples/spaceships">spaceships</a>, which allowed me to experiment with how things like predicted bullet spawning should work.  The spaceships demo does client prediction for players and “asteroids” (well, circles). It compiles to wasm and works in Chrome (as of this post, I think it works in firefox nightly but not stable yet):</p>
+
+<p><img src="/assets/images/bevy/spaceships.png" alt="Spaceships screenshot" /></p>
+
+<figure>
+    <img src="/assets/images/spaceships.png" alt="Spaceships example game from Lightyear" />
+    
+        <figcaption class="caption-text">WASM on the left, native app on the right</figcaption> 
+    
+</figure>
+
+<h2 id="onwards">Onwards</h2>
+
+<p>Time to build a game! But wait, let’s procrastinate a little more first by trying to figure out a good way to deploy multiplayer bevy games that use lightyear..</p>
+
+<h4 id="links">Links</h4>
+
+<ul>
+  <li><a href="https://www.youtube.com/watch?v=ueEmiDM94IE">It IS Rocket Science! The Physics of Rocket League Detailed</a> a great GDC talk. Rocket League uses a similar network model.</li>
+  <li><a href="https://mas-bandwidth.com/choosing-the-right-network-model-for-your-multiplayer-game/">Choosing the right network model for your multiplayer game</a> by Glenn Fiedler. All his articles about game networking are essential reading.</li>
+  <li><a href="https://bevyengine.org/">Bevy</a> - A refreshingly simple data-driven game engine built in Rust</li>
+  <li><a href="https://github.com/cBournhonesque/lightyear">Lightyear</a> - A fantastic networking library to make multiplayer games for the Bevy game engine</li>
+</ul>
+
+<p>See my <a href="/tag/bevygap">other posts tagged as ‘bevygap’</a>.</p>
+
+            </div>
+            <footer class="post-footer">
+               <hr>
+            </footer>
+            
+<section id="comments-area" class="comments-area">
+
+<script src="https://utteranc.es/client.js"
+    repo="RJ/www.metabrew.com"
+    issue-term="og:title"
+    label="comment"
+    theme="github-light"
+    crossorigin="anonymous"
+    async>
+</script>
+
+</section>
+
+        </article>
+        
+
+        <section class="read-next inner">
+            <h2 class="read-next-title">Read Next</h2>
+            
+            <article class="post">
+                <header class="post-header">
+                    <div class="post-meta">
+                        <time class="published" datetime="July 29, 2021">July 29, 2021</time>
+                    </div>
+                    <h3 class="post-title"><a href="/article/2021-blog-update">10 years later&hellip;</a></h3>
+                    <p class="post-tags">
+                        
+                        
+                        
+                        <a href='/tag/life/'>Life</a>
+                        
+                        
+                        
+                    </p>
+                </header>
+            </article>
+            
+            
+            <article class="post">
+                <header class="post-header">
+                    <div class="post-meta">
+                        <time class="published" datetime="December 9, 2024">December 9, 2024</time>
+                    </div>
+                    <h3 class="post-title"><a href="/article/bevygap-bevy-multiplayer-with-edgegap-and-lightyear">Bevygap: Autoscaling multiplayer Bevy game servers with Edgegap &amp; Lightyear</a></h3>
+                    <p class="post-tags">
+                        
+                        
+                        
+                        <a href='/tag/gamedev/'>Gamedev</a>
+                        
+                        
+                        
+                        <a href='/tag/rust/'>Rust</a>
+                        
+                        
+                        
+                        <a href='/tag/edgegap/'>Edgegap</a>
+                        
+                        
+                        
+                        <a href='/tag/netcode/'>Netcode</a>
+                        
+                        
+                        
+                        <a href='/tag/multiplayer/'>Multiplayer</a>
+                        
+                        
+                        
+                        <a href='/tag/bevy/'>Bevy</a>
+                        
+                        
+                        
+                        <a href='/tag/bevygap/'>Bevygap</a>
+                        
+                        
+                        
+                    </p>
+                </header>
+            </article>
+            
+        </section><!-- .read-next -->
+
+        <hr>
+
+        <!-- Create a sorted array of tags -->
+         
+        <section class="tagcloud inner">
+            <h2 class="tagcloud-title">Tags</h2>
+            <div class="tag-links">
+                
+                <a href='/tag/appmon/'>appmon</a>
+                
+                <a href='/tag/appup/'>appup</a>
+                
+                <a href='/tag/bash/'>bash</a>
+                
+                <a href='/tag/bevy/'>bevy</a>
+                
+                <a href='/tag/bevygap/'>bevygap</a>
+                
+                <a href='/tag/c/'>c</a>
+                
+                <a href='/tag/caching/'>caching</a>
+                
+                <a href='/tag/cnode/'>cnode</a>
+                
+                <a href='/tag/comet/'>comet</a>
+                
+                <a href='/tag/databases/'>databases</a>
+                
+                <a href='/tag/deployment/'>deployment</a>
+                
+                <a href='/tag/dht/'>dht</a>
+                
+                <a href='/tag/driver/'>driver</a>
+                
+                <a href='/tag/edgegap/'>edgegap</a>
+                
+                <a href='/tag/ejabberd/'>ejabberd</a>
+                
+                <a href='/tag/erlang/'>erlang</a>
+                
+                <a href='/tag/etop/'>etop</a>
+                
+                <a href='/tag/gamedev/'>gamedev</a>
+                
+                <a href='/tag/hack/'>hack</a>
+                
+                <a href='/tag/hacks/'>hacks</a>
+                
+                <a href='/tag/hackspace/'>hackspace</a>
+                
+                <a href='/tag/hashing/'>hashing</a>
+                
+                <a href='/tag/http/'>http</a>
+                
+                <a href='/tag/irc/'>irc</a>
+                
+                <a href='/tag/irccloud/'>irccloud</a>
+                
+                <a href='/tag/java/'>java</a>
+                
+                <a href='/tag/kernel/'>kernel</a>
+                
+                <a href='/tag/ketama/'>ketama</a>
+                
+                <a href='/tag/lastfm/'>lastfm</a>
+                
+                <a href='/tag/libevent/'>libevent</a>
+                
+                <a href='/tag/life/'>life</a>
+                
+                <a href='/tag/london/'>london</a>
+                
+                <a href='/tag/memcached/'>memcached</a>
+                
+                <a href='/tag/mnesia/'>mnesia</a>
+                
+                <a href='/tag/mochiweb/'>mochiweb</a>
+                
+                <a href='/tag/multiplayer/'>multiplayer</a>
+                
+                <a href='/tag/netcat/'>netcat</a>
+                
+                <a href='/tag/netcode/'>netcode</a>
+                
+                <a href='/tag/networking/'>networking</a>
+                
+                <a href='/tag/nosql/'>nosql</a>
+                
+                <a href='/tag/otp/'>otp</a>
+                
+                <a href='/tag/php/'>php</a>
+                
+                <a href='/tag/playdar/'>playdar</a>
+                
+                <a href='/tag/programming/'>programming</a>
+                
+                <a href='/tag/rebar/'>rebar</a>
+                
+                <a href='/tag/releasehandler/'>releasehandler</a>
+                
+                <a href='/tag/rewrite/'>rewrite</a>
+                
+                <a href='/tag/rust/'>rust</a>
+                
+                <a href='/tag/sasl/'>sasl</a>
+                
+                <a href='/tag/scalability/'>scalability</a>
+                
+                <a href='/tag/spawnfest/'>spawnfest</a>
+                
+                <a href='/tag/ssh/'>ssh</a>
+                
+                <a href='/tag/streaming/'>streaming</a>
+                
+                <a href='/tag/sysops/'>sysops</a>
+                
+                <a href='/tag/talk/'>talk</a>
+                
+                <a href='/tag/tcp/'>tcp</a>
+                
+                <a href='/tag/thrift/'>thrift</a>
+                
+                <a href='/tag/uncategorized/'>uncategorized</a>
+                
+                <a href='/tag/webtool/'>webtool</a>
+                
+                <a href='/tag/xmpp/'>xmpp</a>
+                
+                <a href='/tag/yaws/'>yaws</a>
+                
+            </div><!-- .tag-links -->
+        </section><!-- .tagcloud -->
+
+    </main><!-- .site-main -->
+
+                
+
+                <footer id="colophon" class="site-footer">
+    <p class="site-info inner">
+        Copyright <a href="#">Metabrew.com - Richard Jones</a> &copy; 2024.
+        <br>        
+
+I release all embedded source code in my blog articles to the public domain, unless otherwise specified.
+
+Article text released under the <a href="http://creativecommons.org/licenses/by-nc/4.0/">Creative Commons Attribution-NonCommercial 4.0 International License</a>.
+
+You don't need to ask me if you want to post a translated version of my work on your own website, but you must link back here as per the above license. 
+
+
+    </p>
+    <a id="back-to-top" class="back-to-top" href="#page">
+        <span class="icon-arrow-up" aria-hidden="true"></span>
+        <span class="screen-reader-text">Back to top</span>
+    </a>
+</footer><!-- .site-footer -->
+            </div><!-- .inner-wide -->
+        </div><!-- .site-content -->
+    </div><!-- .site -->
+
+    
+    <!-- Javascript Assets -->
+    <script src="/assets/js/jquery-3.3.1.min.js"></script>
+    <script src="/assets/js/plugins.js"></script>
+    <script src="/assets/js/custom.js"></script>
+
+</body>
+
+</html>

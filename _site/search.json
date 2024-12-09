@@ -1,6 +1,22 @@
 [
   
     {
+      "title"    : "Bevygap: Autoscaling multiplayer Bevy game servers with Edgegap &amp;amp; Lightyear",
+      "category" : "",
+      "tags"     : "gamedev, rust, edgegap, netcode, multiplayer, bevy, bevygap",
+      "url"      : "/article/bevygap-bevy-multiplayer-with-edgegap-and-lightyear",
+      "date"     : "December 9, 2024"
+    } ,
+  
+    {
+      "title"    : "Rock and Rollback: Realtime multiplayer in the browser, with rust and bevy",
+      "category" : "",
+      "tags"     : "gamedev, netcode, multiplayer, bevy, bevygap",
+      "url"      : "/article/rock-and-rollback-realtime-multiplayer-games-with-bevy",
+      "date"     : "December 8, 2024"
+    } ,
+  
+    {
       "title"    : "10 years later&amp;hellip;",
       "category" : "",
       "tags"     : "life",

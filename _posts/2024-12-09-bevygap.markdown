@@ -1,7 +1,7 @@
 --- 
 layout: post
 published: true
-title: "Bevygap"
+title: "Bevygap: Autoscaling multiplayer Bevy game servers with Edgegap &amp; Lightyear"
 permalink: /article/bevygap-bevy-multiplayer-with-edgegap-and-lightyear
 tags: 
 - gamedev
@@ -9,26 +9,36 @@ tags:
 - edgegap
 - netcode
 - multiplayer
+- bevy
+- bevygap
 ---
 
-# Autoscaling multiplayer Bevy game servers with Edgegap &amp; Lightyear
-
-If i'm going to write a server-authoritative multiplayer game, it sure would be nice to have a decent way to deploy it. Especially to deploy servers around the world in response to player demand, to autoscale and keep latency down. 
+If i'm going to write a server-authoritative multiplayer game, it would be nice to have a decent way to deploy it. Especially to deploy servers around the world in response to player demand, to autoscale and keep latency down. 
 
 #### Modifying the Lightyear spaceships example
 
-I took my spaceships example from the lightyear repo, and repackaged it with the following changes:
+
+
+<img align="right" width="100" src="/assets/images/bevy/bevy-logo.png">
+
+I took my [spaceships example](https://github.com/cBournhonesque/lightyear/tree/main/examples/spaceships) from the [lightyear repo](https://github.com/cBournhonesque/lightyear), and repackaged it with the following changes:
 
 * Split into a `client`, `shared`, and `server` crates
 * Changed to only support webtransport – no steam, no plain UDP, etc.
 * Made server headless - no gui option
-* Added Dockerfile to build the server; produces a ~30mb image
+* Added Dockerfile to build the server; produces a ~30mb image (thanks [distroless](https://github.com/GoogleContainerTools/distroless))
 * Added Dockerfile to build wasm client; produces an image based on `nginx` to serve our `index.html` and wasm assets.
 * Added Github actions to build and push the server and wasm client docker images
 
-At this point it was easy enough to run the server and client containers on a single server, and I started to look for a way to autodeploy servers to multiple locations on demand. I'm not going to review the various options or discuss the pros and cons other than to say there are a few to choose from, and I decided to go with Edgegap.
+At this point it was easy enough to run the server and client containers on a single server, and I started to look for a way to autodeploy servers to multiple locations on demand. I'm not going to review the various options or discuss the pros and cons other than to say there are a few to choose from, and I decided to go with [Edgegap](https://edgegap.com).
+
+My [bevygap-spaceships](https://github.com/RJ/bevygap-spaceships) repo contains this repackaged version of the spaceships demo.
+
+![](/assets/images/bevy/spaceships.png)
 
 ### Edgegap – the basics
+
+<img align="right" width="150" src="/assets/images/bevy/edgegap-logo.png">
 
 * You push the gameserver docker image to Edgegap's container registry, so they are able to deploy gameservers for you at will.
 * You configure the metadata for your game – max players per server, time an empty server stays online for, etc.
@@ -42,45 +52,50 @@ There's a bit of plumbing needed to wire all this up so it's easy to use in bevy
 
 Allow me to introduce the various components:
 
-![Bevygap component diagram](/assets/images/bevygap-20241105.png)
+![Bevygap component diagram](/assets/images/bevy/bevygap-20241105.png)
 
 #### Messaging layer
 
-<small>NATS, running from a docker container, listening using TLS</small>
+<a href="nats.io">
+<img align="right" width="150" src="/assets/images/bevy/nats-logo.png">
+</a>
+
+> <small>NATS, running from a docker container, listening using TLS</small>
 
 Gameservers need to be able to talk to the matchmaker(s), and a bit of key/value storage is useful for configuration. I chose to use NATS, which supports various messaging patterns like pub-sub, along with some key/value storage. My NATS server listens on a public IP, so that the gameservers can connect to it from Edgegap's infrastructure. 
 
 
 #### Matchmaker
 
-<small>A rust async tokio binary</small>
+> <small>A rust async tokio binary</small>
 
 When a player wants to connect, the matchmaker talks to the edgegap API to create a session, and await the results before returning the deployment details (the gameserver `ip:port` etc). The matchmaker exposes this functionality as a service on the NATS bus.
 
 #### Matchmaker HTTPd
 
-<small>A rust async tokio binary using the Axum webserver</small>
+> <small>A rust async tokio binary using the Axum webserver</small>
 
 This is the public websocket interface to the matchmaker. It speaks JSON to the game clients, and passes on the query via NATS to the matchmaker service.
 
 
 #### Bevygap Server Plugin
 
-<small>A bevy plugin for the gameserver</small>
+> <small>A bevy plugin for the gameserver</small>
 
-At startup, this will make a connection to your NATS server, and read the various environment variables set by Edgegap. This tells us, amongst other things, the geographic location of the server, the public `ip:port`, and how to fetch additional context data. Check out the [edgegap docs for injected variables](https://docs.edgegap.com/docs/deployment/injected-variables) for more.
+At startup, this will make a connection to your NATS server, and read the various environment variables set by Edgegap. This tells us things like the geographic location of the server, the public `ip:port`, and how to fetch additional context data. Check out the [edgegap docs for injected variables](https://docs.edgegap.com/docs/deployment/injected-variables) for more.
 
 
 #### Bevygap Client Plugin
 
-<small>A bevy plugin for the game client, wasm and native</small>
+> <small>A bevy plugin for the game client, wasm and native</small>
 
 This is mostly concerned with connecting to our matchmaker websocket over http, and requesting to play. Once a successful response is returned, the plugin will modify the Lightyear settings with the returned server ip and port, the lightyear `ConnectToken`, and in the case of wasm clients, the certificate digest for the WebTransport connection. It then signals the game to make the connection to the lightyear game server.
 
-As part of this, I wrote a **n**o-**f**rills **w**eb**s**ocket client library for bevy that works on native and wasm called `bevy_nfws`. There are a few good websocket libraries for bevy already, but many expect you to also be running bevy on the server end of the connection, which I'm not.
+As part of this, I wrote `bevy_nfws`, a **n**o-**f**rills **w**eb**s**ocket client library for bevy that works on native and wasm. There are a few feature-rich websocket libraries for bevy already, but many expect you to also be running bevy on the server end of the connection, which I'm not.
 
 
 ## Modifying a Lightyear game to use bevygap
+
 
 Code changes to the server and client are minimal. My example game toggles them with a `bevygap` cargo feature, so I can still do local development without using the matchmaker.
 
@@ -108,11 +123,11 @@ fn start_listening_once_bevygap_ready(_: Trigger<BevygapReady>, mut commands: Co
 
 ##### WebTransport, WASM Clients, and TLS Certificate Digests
 
-My gameserver [generates](https://github.com/RJ/bevygap-spaceships/blob/9583777aa2f6e01a6b28428b7ba92be428fc084a/server/src/main.rs#L74) a WebTransport-specification-compliant self-signed TLS cert on startup.
-This is fully supported as long as you provide the certificate digest to the browser before it attempts a connection, and comply with the following part of the spec:
+My gameserver [generates](https://github.com/RJ/bevygap-spaceships/blob/9583777aa2f6e01a6b28428b7ba92be428fc084a/server/src/main.rs#L74) a WebTransport-specification-[compliant](https://w3c.github.io/webtransport/#dom-webtransportoptions-servercertificatehashes) self-signed TLS cert on startup.
+This is fully supported as long as you provide the certificate digest to the browser before it attempts a connection, and comply with the [following part](https://w3c.github.io/webtransport/#verify-a-certificate-hash) of the spec:
 
 * The certificate MUST be an X.509v3 certificate as defined in RFC5280.
-* The key used in the Subject Public Key field MUST be one of the allowed public key algorithms. This function uses the ECDSA P-256 algorithm.
+* The key used in the Subject Public Key field MUST be one of the allowed public key algorithms. (I'm using ECDSA P-256)
 * The current time MUST be within the validity period of the certificate as defined in Section 4.1.2.5 of RFC5280.
 * The total length of the validity period MUST NOT exceed two weeks.
 
@@ -135,8 +150,8 @@ impl Plugin for BevygapSpaceshipsClientPlugin {
       // ..
       app.insert_resource(BevygapClientConfig {
           matchmaker_url: get_matchmaker_url(),
-          game_name: GAME_NAME.to_string(),
-          game_version: GAME_VERSION.to_string(),
+          game_name: "bevygap-spaceships".to_string(),
+          game_version: "1".to_string(),
           ..default()
       });
 
@@ -159,3 +174,37 @@ fn connect(mut commands: Commands) {
 }
 
 ```
+
+
+## Cost and Scaling
+
+If you follow the Edgegap setup instructions in [The Bevygap Book](https://rj.github.io/bevygap/installation/edgegap.html) you'll see that I set the "Empty Time To Live" to 10 minutes, and select autodeploy. This means server instances are terminated after 10 mins of having no connected players, and automatically started where they are needed.
+
+Since Edgegap charge for the running time and bandwidth servers use, you aren't billed for the time you have zero instances running.
+
+This means as well as scaling up, it scales down to almost zero when there are no players. There is a small fixed cost for a low powered server that runs NATS and the matchmaker service. I run those services on the machine that hosts this website.
+
+## Using it
+
+You can set this all up with an Edgegap free trial account. The installation sections in [The Bevygap Book](https://rj.github.io/bevygap/) shows how I set up NATS (and the [offical NATS docs](https://docs.nats.io/) are excellent), along with Edgegap, and all the required environment variables.
+
+If you try it out, let me know in the [#lightyear channel](https://discord.com/channels/691052431525675048/1189344685546811564) on Bevy's Discord.
+
+
+# Live Demo
+
+Is the [live demo of bevygap-spaceships](https://game.metabrew.com/bevygap-spaceships/) working? Hopefully! In chrome at least..
+
+
+### Links
+
+* [Bevy](https://bevyengine.org/) - A refreshingly simple data-driven game engine built in Rust
+* [Lightyear](https://github.com/cBournhonesque/lightyear) - A networking library to make multiplayer games for the Bevy game engine 
+* [bevygap-spaceships](https://github.com/RJ/bevygap-spaceships) game repo, my split server/client version of Lightyear's spaceships example, with bevygap support.
+* [Bevygap](https://github.com/RJ/bevygap) repo, the toolkit for making all this work
+* [The Bevygap Book](https://rj.github.io/bevygap/installation/edgegap.html) - docs for setting up bevygap and related bits
+* [Edgegap](https://edgegap.com) - this does the deployment and session management of our gameserver
+* [NATS](https://nats.io) - Message bus ++
+* [Live demo of spaceships example game](https://game.metabrew.com/bevygap-spaceships/) - use a Chrome based browser
+
+See my [other posts tagged as 'bevygap'](/tag/bevygap).

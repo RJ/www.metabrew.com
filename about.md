@@ -3,10 +3,8 @@ layout: page
 title: About RJ
 ---
 
-My blog covers technical topics, but I promise I'm a well-rounded human with varied interests. I really like cooking. I'm married, with two young children and a cat. Lived in London until just a few years ago, now I live in Winchester and come to London from time to time.
+If i wasn't so busy with DIY, parenting, cooking, and other stuff, I'm sure i'd find another excuse not to update my website.
 
-
-<h3>Look on my works, ye Mighty, and despair!</h3>
 <table class="projects">
     <tr>
         <td class="i">
