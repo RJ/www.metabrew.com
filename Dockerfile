@@ -1,5 +1,6 @@
 FROM jekyll/jekyll AS builder
 WORKDIR /home/jekyll/app
+RUN chmod 777 /home/jekyll/app
 #COPY Gemfile .
 #RUN bundle install 
 COPY . .
