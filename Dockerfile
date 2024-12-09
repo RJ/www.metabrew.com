@@ -3,7 +3,7 @@ WORKDIR /home/jekyll/app
 #COPY Gemfile .
 #RUN bundle install 
 COPY . .
-RUN chmod go+rw Gemfile.lock || true
+RUN touch Gemfile.lock && chmod go+rw Gemfile.lock
 RUN mkdir -p _site && chmod go+rwx _site
 ENV JEKYLL_ENV=production
 RUN jekyll build
