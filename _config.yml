@@ -1,7 +1,7 @@
 # Site setings
 name: 'Richard Jones'
 description: Logbook / blog / devlog
-meta_description: 'Richard Jones (RJ), aka metabrew. Blog on erlang and other subjects.'
+meta_description: 'Richard Jones (RJ). Blog on erlang, and other technical subjects.'
 logo:
 # Author image is used in site sidebar and greetings in the home page hero text
 author:
@@ -9,7 +9,7 @@ author:
   greetings:
 favicon: 'assets/images/favicon.ico'
 baseurl: 
-production_url: https://www.metabrew.com/
+production_url: https://www.metabrew.com
 
 # Contact form setings
 email: rj@metabrew.com

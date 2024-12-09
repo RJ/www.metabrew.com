@@ -3,10 +3,10 @@
   <channel>
     <title>Richard Jones (Erlang Only)</title>
     <description>Logbook / blog / devlog</description>
-    <link>http://0.0.0.0:4000/</link>
-    <atom:link href="http://0.0.0.0:4000/feed.xml" rel="self" type="application/rss+xml"/>
-    <pubDate>Mon, 09 Dec 2024 05:59:28 -0600</pubDate>
-    <lastBuildDate>Mon, 09 Dec 2024 05:59:28 -0600</lastBuildDate>
+    <link>/</link>
+    <atom:link href="/feed.xml" rel="self" type="application/rss+xml"/>
+    <pubDate>Mon, 09 Dec 2024 06:09:26 -0600</pubDate>
+    <lastBuildDate>Mon, 09 Dec 2024 06:09:26 -0600</lastBuildDate>
     <generator>Jekyll v4.2.2</generator>
     
     
@@ -125,8 +125,8 @@ Erlang&lt;/a&gt;. Licensed the same as Erlang/OTP.&lt;/p&gt;
 
 </description>
         <pubDate>Mon, 11 Jul 2011 00:00:00 -0500</pubDate>
-        <link>http://0.0.0.0:4000/article/bigwig-erlang-webtool-spawnfest</link>
-        <guid isPermaLink="true">http://0.0.0.0:4000/article/bigwig-erlang-webtool-spawnfest</guid>
+        <link>/article/bigwig-erlang-webtool-spawnfest</link>
+        <guid isPermaLink="true">/article/bigwig-erlang-webtool-spawnfest</guid>
         
         <category>programming</category>
         
@@ -602,8 +602,8 @@ myself, so I can’t use the normal appup process to call code_change.&lt;/p&gt;
 
 </description>
         <pubDate>Sat, 26 Mar 2011 00:00:00 -0500</pubDate>
-        <link>http://0.0.0.0:4000/article/erlang-rebar-tutorial-generating-releases-upgrades</link>
-        <guid isPermaLink="true">http://0.0.0.0:4000/article/erlang-rebar-tutorial-generating-releases-upgrades</guid>
+        <link>/article/erlang-rebar-tutorial-generating-releases-upgrades</link>
+        <guid isPermaLink="true">/article/erlang-rebar-tutorial-generating-releases-upgrades</guid>
         
         <category>programming</category>
         
@@ -865,8 +865,8 @@ If you wrote your .appup properly, it is also safe to downgrade - just do &lt;co
 How do you package and deploy your Erlang applications to do live-updates?&lt;/p&gt;
 </description>
         <pubDate>Sat, 18 Sep 2010 00:00:00 -0500</pubDate>
-        <link>http://0.0.0.0:4000/article/erlangotp-releases-rebar-release_handler-appup-etc</link>
-        <guid isPermaLink="true">http://0.0.0.0:4000/article/erlangotp-releases-rebar-release_handler-appup-etc</guid>
+        <link>/article/erlangotp-releases-rebar-release_handler-appup-etc</link>
+        <guid isPermaLink="true">/article/erlangotp-releases-rebar-release_handler-appup-etc</guid>
         
         <category>programming</category>
         
@@ -1016,8 +1016,8 @@ You should read this &lt;a href=&quot;http://musicmachinery.com/2009/10/18/playi
 &lt;/p&gt;
 </description>
         <pubDate>Wed, 21 Oct 2009 00:00:00 -0500</pubDate>
-        <link>http://0.0.0.0:4000/article/rewriting-playdar-c-to-erlang-massive-savings</link>
-        <guid isPermaLink="true">http://0.0.0.0:4000/article/rewriting-playdar-c-to-erlang-massive-savings</guid>
+        <link>/article/rewriting-playdar-c-to-erlang-massive-savings</link>
+        <guid isPermaLink="true">/article/rewriting-playdar-c-to-erlang-massive-savings</guid>
         
         <category>programming</category>
         
@@ -1128,8 +1128,8 @@ stats
 &lt;p&gt;&lt;a href=&quot;http://www.playdar.org/&quot; target=&quot;_blank&quot;&gt;http://www.playdar.org/&lt;/a&gt;&lt;/p&gt;
 </description>
         <pubDate>Thu, 08 Oct 2009 00:00:00 -0500</pubDate>
-        <link>http://0.0.0.0:4000/article/erlang-talk-at-london-hackspace</link>
-        <guid isPermaLink="true">http://0.0.0.0:4000/article/erlang-talk-at-london-hackspace</guid>
+        <link>/article/erlang-talk-at-london-hackspace</link>
+        <guid isPermaLink="true">/article/erlang-talk-at-london-hackspace</guid>
         
         <category>uncategorized</category>
         
@@ -1394,8 +1394,8 @@ stats
 &lt;p&gt;&lt;em&gt;UPDATE 1:&lt;/em&gt; Corrected table: memcachedb does replication, as per BerkeleyDB.&lt;/p&gt;
 </description>
         <pubDate>Mon, 19 Jan 2009 00:00:00 -0600</pubDate>
-        <link>http://0.0.0.0:4000/article/anti-rdbms-a-list-of-distributed-key-value-stores</link>
-        <guid isPermaLink="true">http://0.0.0.0:4000/article/anti-rdbms-a-list-of-distributed-key-value-stores</guid>
+        <link>/article/anti-rdbms-a-list-of-distributed-key-value-stores</link>
+        <guid isPermaLink="true">/article/anti-rdbms-a-list-of-distributed-key-value-stores</guid>
         
         <category>programming</category>
         
